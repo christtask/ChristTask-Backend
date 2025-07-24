@@ -65,17 +65,17 @@ export const AuthProvider = ({ children }: { children: any }) => {
       
       const redirectUrl = `${window.location.origin}/payment`;
       console.log('Redirect URL:', redirectUrl);
-      
+    
       const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: redirectUrl,
-          data: {
-            full_name: fullName || email
-          }
+      email,
+      password,
+      options: {
+        emailRedirectTo: redirectUrl,
+        data: {
+          full_name: fullName || email
         }
-      });
+      }
+    });
 
       console.log('Signup response:', { data, error });
 
