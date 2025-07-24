@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Supabase Test</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <h1>Supabase Connection Test</h1>
+    <button onclick="testConnection()">Test Connection</button>
+    <div id="result"></div>
+
+    <script>
+        const supabaseUrl = 'https://auwvfuotpysditrngcle.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF1d3ZmdW90cHlzZGl0cm5nY2xlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk5MTQ0OTYsImV4cCI6MjA2NTQ5MDQ5Nn0.SP1qnW3gDtAV4-qCnvm744nrON2zIlwvEWLcn0j57Ys';
+        
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+        async function testConnection() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = 'Testing connection...';
+            
+            try {
+                const { data, error } = await supabase.from('profiles').select('count').limit(1);
+                
+                if (error) {
+                    resultDiv.innerHTML = `Error: ${error.message}`;
+                } else {
+                    resultDiv.innerHTML = `Success! Data: ${JSON.stringify(data)}`;
+                }
+            } catch (err) {
+                resultDiv.innerHTML = `Exception: ${err.message}`;
+            }
+        }
+    </script>
+</body>
+</html> 

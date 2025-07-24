@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Stripe Checkout Test</title>
+</head>
+<body>
+  <h1>Stripe Checkout Test</h1>
+  <button id="checkout-btn">Go to Checkout</button>
+
+  <script>
+    console.log('Script loaded'); // Confirm script runs
+    
+    const priceId = 'price_1ReOLjFEfjI8S6GYAe7YSlOt '; // Replace with your actual Stripe price ID
+    const email = 'test@example.com';    // Replace with a test email
+
+    document.getElementById('checkout-btn').addEventListener('click', async () => {
+      console.log('Checkout button clicked'); // Debug log to check if click event is firing
+      try {
+        const response = await fetch('https://tiidumzlyqvhueivyrek.supabase.co/functions/v1/create-checkout-session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ priceId, email })
+        });
+
+        const data = await response.json();
+
+        if (data.url) {
+          window.location.href = data.url;  // Redirect to Stripe Checkout page
+        } else {
+          alert('Failed to create checkout session: ' + (data.error || 'Unknown error'));
+        }
+      } catch (err) {
+        alert('Error: ' + err.message);
+      }
+    });
+  </script>
+</body>
+</html>
+    

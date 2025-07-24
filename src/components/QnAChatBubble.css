@@ -1,0 +1,22 @@
+.underline-animate {
+  overflow: hidden;
+}
+.underline-animate::after {
+  content: '';
+  display: block;
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 4px;
+  width: 100%;
+  background: #a78bfa; /* Tailwind purple-500 */
+  transform: scaleX(0);
+  transform-origin: left;
+  animation: underline-slide 0.7s cubic-bezier(0.4,0,0.2,1) forwards;
+}
+
+@keyframes underline-slide {
+  to {
+    transform: scaleX(1);
+  }
+} 
