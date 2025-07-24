@@ -9,7 +9,10 @@ export default defineConfig(({ mode }) => ({
     host: "::",
     port: 8080,
     proxy: {
-      '/api': 'https://christtask-backend.onrender.com'
+      '/api': 'https://christtask-backend.onrender.com',
+      '/create-subscription': 'https://christtask-backend.onrender.com',
+      '/check-subscription': 'https://christtask-backend.onrender.com',
+      '/validate-coupon': 'https://christtask-backend.onrender.com'
     }
   },
   plugins: [
