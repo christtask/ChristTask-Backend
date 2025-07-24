@@ -103,7 +103,7 @@ export const ChatbotSuite = ({ selectedTopic = "debate" }: ChatbotSuiteProps) =>
           className="h-full"
           onSendMessage={async (message: string) => {
             try {
-              const response = await fetch('http://localhost:3000/api/chat', {
+              const response = await fetch('https://christtask-backend.onrender.com/api/chat', {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',

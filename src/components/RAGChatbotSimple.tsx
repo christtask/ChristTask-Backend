@@ -78,7 +78,7 @@ export default function ApologeticsChat({ className = '' }: ApologeticsChatProps
 
     try {
       // Send message to your backend API
-      const response = await fetch('http://localhost:3000/api/chat', {
+      const response = await fetch('https://christtask-backend.onrender.com/api/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

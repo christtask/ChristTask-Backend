@@ -211,7 +211,7 @@ const PaymentPage = () => {
         type: 'card', card: cardElement as any,
       });
       if (paymentMethodError) throw new Error(paymentMethodError.message || 'Failed to create payment method');
-      const res = await fetch('http://localhost:3000/create-subscription', {
+      const res = await fetch('https://christtask-backend.onrender.com/create-subscription', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: formData.email.trim(),

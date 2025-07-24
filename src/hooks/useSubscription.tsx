@@ -49,7 +49,7 @@ export const useSubscription = () => {
 
     try {
       console.log('Making request to check-subscription endpoint...');
-      const response = await fetch('http://localhost:3000/check-subscription', {
+      const response = await fetch('https://christtask-backend.onrender.com/check-subscription', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

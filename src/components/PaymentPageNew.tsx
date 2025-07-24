@@ -107,7 +107,7 @@ const PaymentPageNewInner = () => {
       }
 
       // Call backend to create Subscription with selected plan & coupon
-      const res = await fetch("http://localhost:3000/create-subscription", {
+      const res = await fetch("https://christtask-backend.onrender.com/create-subscription", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
