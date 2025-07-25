@@ -1,14 +1,14 @@
 import { useAuth } from '@/hooks/useAuth';
-import { useSubscription } from '@/hooks/useSubscription';
+
 import RAGChatbotSimple from '../components/RAGChatbotSimple';
-import { ExpiredSubscriptionNotice } from '../components/ExpiredSubscriptionNotice';
+
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useNavigate } from 'react-router-dom';
 
 export default function ChatbotPage() {
   const { user } = useAuth();
-  const { hasSubscription, isExpired, loading, error } = useSubscription();
+
   const navigate = useNavigate();
 
   // If user is not logged in, redirect to login
@@ -62,9 +62,7 @@ export default function ChatbotPage() {
   return (
     <div className="flex flex-col flex-1 min-h-0 h-full">
       {/* Show expired subscription notice if applicable */}
-      {isExpired && (
-        <ExpiredSubscriptionNotice variant="banner" className="mb-4" />
-      )}
+
       
       {/* Show chatbot */}
       <RAGChatbotSimple />
