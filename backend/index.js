@@ -6,7 +6,11 @@ const axios = require('axios');
 const OpenAI = require('openai');
 const { Pinecone } = require('@pinecone-database/pinecone');
 const rag = require('./lib/rag.js'); // Use JavaScript version
-const ragFallback = require('./lib/rag-fallback.js'); // Fallback RAG system
+
+// Local fallback function
+function fallback() {
+  return "This is a fallback response. The full RAG system is temporarily unavailable.";
+}
 
 const app = express();
 const stripe = process.env.STRIPE_SECRET_KEY ? Stripe(process.env.STRIPE_SECRET_KEY) : null;
@@ -21,15 +25,39 @@ const pinecone = process.env.PINECONE_API_KEY ? new Pinecone({
   apiKey: process.env.PINECONE_API_KEY,
 }) : null;
 
-app.use(cors());
+// Configure CORS to allow your frontend domain
+app.use(cors({
+  origin: [
+    'https://christ-task-mu.vercel.app',
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'http://localhost:4173'
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+}));
+
 app.use(express.json());
 
 // Health check
 app.get('/', (req, res) => {
+  console.log('🏥 Health check requested');
   res.json({
     message: 'Backend is running with AI integration!',
     timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development'
+    environment: process.env.NODE_ENV || 'development',
+    status: 'healthy'
+  });
+});
+
+// Simple test endpoint
+app.get('/api/test', (req, res) => {
+  console.log('🧪 Test endpoint requested');
+  res.json({
+    message: 'Backend API is working!',
+    timestamp: new Date().toISOString(),
+    endpoints: ['/api/chat', '/api/test-rag', '/api/test-chat']
   });
 });
 
@@ -469,9 +497,14 @@ app.post('/create-subscription', async (req, res) => {
 
 // AI Chat endpoint
 app.post('/api/chat', async (req, res) => {
+  console.log('📨 Received chat request');
+  console.log('Headers:', req.headers);
+  console.log('Body:', req.body);
+  
   const { message } = req.body;
   
   if (!message || !message.trim()) {
+    console.log('❌ No message provided');
     return res.status(400).json({ 
       error: 'Message is required.' 
     });
@@ -502,7 +535,13 @@ app.post('/api/chat', async (req, res) => {
       console.log('✅ RAG response generated successfully');
     } catch (ragError) {
       console.log('⚠️ Main RAG failed, using fallback:', ragError.message);
-      ragResponse = await ragFallback.generateRAGResponse(message);
+      ragResponse = {
+        answer: fallback(),
+        sources: [],
+        scriptureReferences: [],
+        topic: 'General',
+        difficulty: 'Beginner'
+      };
       console.log('✅ Fallback RAG response generated');
     }
     
@@ -590,10 +629,12 @@ Always respond in a helpful, informative, and Christ-like manner.`;
     */
     // --- END OLD LOGIC ---
   } catch (error) {
-    console.error('Chat error:', error);
+    console.error('❌ Chat error:', error);
+    console.error('Error stack:', error.stack);
     res.status(500).json({ 
       error: 'An error occurred while processing your message.',
-      details: error.message 
+      details: error.message,
+      timestamp: new Date().toISOString()
     });
   }
 });
