@@ -528,13 +528,23 @@ app.post('/api/chat', async (req, res) => {
       });
     }
     
+    // Check if RAG module is available
+    if (!rag || typeof rag.generateRAGResponse !== 'function') {
+      console.error('❌ RAG module not available');
+      return res.status(500).json({ 
+        error: 'RAG system not available' 
+      });
+    }
+    
     // --- NEW RAG LOGIC ---
     let ragResponse;
     try {
+      console.log('🔍 Calling RAG.generateRAGResponse...');
       ragResponse = await rag.generateRAGResponse(message);
       console.log('✅ RAG response generated successfully');
     } catch (ragError) {
       console.log('⚠️ Main RAG failed, using fallback:', ragError.message);
+      console.error('RAG Error details:', ragError);
       ragResponse = {
         answer: fallback(),
         sources: [],
