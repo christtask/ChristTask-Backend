@@ -5,6 +5,8 @@ const Stripe = require('stripe');
 const axios = require('axios');
 const OpenAI = require('openai');
 const { Pinecone } = require('@pinecone-database/pinecone');
+const rag = require('./lib/rag.js'); // Use JavaScript version
+const ragFallback = require('./lib/rag-fallback.js'); // Fallback RAG system
 
 const app = express();
 const stripe = process.env.STRIPE_SECRET_KEY ? Stripe(process.env.STRIPE_SECRET_KEY) : null;
@@ -29,6 +31,102 @@ app.get('/', (req, res) => {
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development'
   });
+});
+
+// Test RAG system
+app.get('/api/test-rag', async (req, res) => {
+  try {
+    console.log('🧪 Testing RAG system...');
+    
+    // Check environment variables
+    const envCheck = {
+      openai: !!process.env.OPENAI_API_KEY,
+      pinecone: !!process.env.PINECONE_API_KEY,
+      pineconeIndex: process.env.PINECONE_INDEX_NAME || 'rag-chatbot'
+    };
+    
+    console.log('Environment check:', envCheck);
+    
+    if (!envCheck.openai || !envCheck.pinecone) {
+      return res.json({
+        status: 'error',
+        message: 'Missing environment variables',
+        envCheck
+      });
+    }
+    
+    // Test a simple query
+    const testQuery = 'What is the Trinity?';
+    const ragResponse = await rag.generateRAGResponse(testQuery);
+    
+    res.json({
+      status: 'success',
+      message: 'RAG system is working!',
+      testQuery,
+      response: ragResponse.answer.substring(0, 200) + '...',
+      sourcesFound: ragResponse.sources.length,
+      envCheck
+    });
+    
+  } catch (error) {
+    console.error('❌ RAG test failed:', error);
+    res.json({
+      status: 'error',
+      message: 'RAG test failed',
+      error: error.message
+    });
+  }
+});
+
+// Simple chat test endpoint
+app.post('/api/test-chat', async (req, res) => {
+  try {
+    const { message } = req.body;
+    
+    if (!message) {
+      return res.status(400).json({ error: 'Message is required' });
+    }
+    
+    console.log('🧪 Testing chat with message:', message);
+    
+    // Check environment variables
+    const envCheck = {
+      openai: !!process.env.OPENAI_API_KEY,
+      pinecone: !!process.env.PINECONE_API_KEY,
+      pineconeIndex: process.env.PINECONE_INDEX_NAME || 'rag-chatbot'
+    };
+    
+    console.log('Environment check:', envCheck);
+    
+    if (!envCheck.openai || !envCheck.pinecone) {
+      return res.json({
+        status: 'error',
+        message: 'Missing environment variables',
+        envCheck
+      });
+    }
+    
+    // Test RAG response
+    const ragResponse = await rag.generateRAGResponse(message);
+    
+    res.json({
+      status: 'success',
+      answer: ragResponse.answer,
+      sources: ragResponse.sources,
+      scriptureReferences: ragResponse.scriptureReferences,
+      topic: ragResponse.topic,
+      difficulty: ragResponse.difficulty,
+      envCheck
+    });
+    
+  } catch (error) {
+    console.error('❌ Chat test failed:', error);
+    res.json({
+      status: 'error',
+      message: 'Chat test failed',
+      error: error.message
+    });
+  }
 });
 
 // Stripe Checkout session creation endpoint
@@ -380,6 +478,47 @@ app.post('/api/chat', async (req, res) => {
   }
 
   try {
+    console.log('🤖 Processing chat request:', message);
+    
+    // Check if environment variables are set
+    if (!process.env.OPENAI_API_KEY) {
+      console.error('❌ OPENAI_API_KEY not set');
+      return res.status(500).json({ 
+        error: 'OpenAI API key not configured' 
+      });
+    }
+    
+    if (!process.env.PINECONE_API_KEY) {
+      console.error('❌ PINECONE_API_KEY not set');
+      return res.status(500).json({ 
+        error: 'Pinecone API key not configured' 
+      });
+    }
+    
+    // --- NEW RAG LOGIC ---
+    let ragResponse;
+    try {
+      ragResponse = await rag.generateRAGResponse(message);
+      console.log('✅ RAG response generated successfully');
+    } catch (ragError) {
+      console.log('⚠️ Main RAG failed, using fallback:', ragError.message);
+      ragResponse = await ragFallback.generateRAGResponse(message);
+      console.log('✅ Fallback RAG response generated');
+    }
+    
+    return res.json({
+      answer: ragResponse.answer,
+      sources: ragResponse.sources,
+      scriptureReferences: ragResponse.scriptureReferences,
+      topic: ragResponse.topic,
+      difficulty: ragResponse.difficulty,
+      timestamp: new Date().toISOString(),
+      context: 'Used RAG context'
+    });
+    // --- END NEW RAG LOGIC ---
+
+    // --- OLD LOGIC (commented out for safety) ---
+    /*
     // Check if OpenAI is configured
     if (!openai) {
       return res.status(500).json({ 
@@ -448,6 +587,8 @@ Always respond in a helpful, informative, and Christ-like manner.`;
       timestamp: new Date().toISOString(),
       context: context ? 'Used RAG context' : 'No context available'
     });
+    */
+    // --- END OLD LOGIC ---
   } catch (error) {
     console.error('Chat error:', error);
     res.status(500).json({ 

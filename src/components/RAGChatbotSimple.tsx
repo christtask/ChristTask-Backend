@@ -98,7 +98,7 @@ export default function ApologeticsChat({ className = '' }: ApologeticsChatProps
       const assistantMessage: ChatMessage = {
         id: loadingMessage.id,
         role: 'assistant',
-        content: data.response,
+        content: data.answer || data.response, // Try 'answer' first, fallback to 'response'
         timestamp: new Date(),
         sources: data.sources,
         scriptureReferences: data.scriptureReferences,

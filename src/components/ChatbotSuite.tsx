@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -47,7 +46,7 @@ const chatOptions: ChatOption[] = [
 export const ChatbotSuite = ({ selectedTopic = "debate" }: ChatbotSuiteProps) => {
   const { user } = useAuth();
   const { remainingMessages, refreshUsage } = useMessageUsage();
-  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [conversationId, setConversationId] = useState(null as string | null);
 
   // Generate conversation ID for this session
   React.useEffect(() => {
@@ -117,7 +116,7 @@ export const ChatbotSuite = ({ selectedTopic = "debate" }: ChatbotSuiteProps) =>
               
               const data = await response.json();
               // Use 'answer' from your backend, not 'response'
-              return data.answer || "Sorry, I couldn't process that request.";
+              return data.answer || data.response || "Sorry, I couldn't process that request.";
             } catch (error) {
               console.error('Chat error:', error);
               return 'Sorry, I encountered an error. Please try again.';
