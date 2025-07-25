@@ -61,7 +61,7 @@ app.post('/api/chat', async (req, res) => {
           encoding_format: 'float',
         });
         
-        const indexName = process.env.PINECONE_INDEX_NAME || 'rag-chatbot';
+        const indexName = process.env.PINECONE_INDEX_NAME || 'chatbot';
         const index = pinecone.index(indexName);
         
         const queryResponse = await index.query({
@@ -138,7 +138,7 @@ app.get('/api/test-rag', async (req, res) => {
     const envCheck = {
       openai: !!process.env.OPENAI_API_KEY,
       pinecone: !!process.env.PINECONE_API_KEY,
-      pineconeIndex: process.env.PINECONE_INDEX_NAME || 'rag-chatbot'
+      pineconeIndex: process.env.PINECONE_INDEX_NAME || 'chatbot'
     };
     
     res.json({
@@ -172,7 +172,7 @@ app.post('/api/test-chat', async (req, res) => {
     const envCheck = {
       openai: !!process.env.OPENAI_API_KEY,
       pinecone: !!process.env.PINECONE_API_KEY,
-      pineconeIndex: process.env.PINECONE_INDEX_NAME || 'rag-chatbot'
+      pineconeIndex: process.env.PINECONE_INDEX_NAME || 'chatbot'
     };
     
     console.log('Environment check:', envCheck);
@@ -195,7 +195,7 @@ app.post('/api/test-chat', async (req, res) => {
           encoding_format: 'float',
         });
         
-        const indexName = process.env.PINECONE_INDEX_NAME || 'rag-chatbot';
+        const indexName = process.env.PINECONE_INDEX_NAME || 'chatbot';
         const index = pinecone.index(indexName);
         
         const queryResponse = await index.query({

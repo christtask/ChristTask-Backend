@@ -10,7 +10,7 @@ const pinecone = new Pinecone({
  */
 async function searchSimilarChunks(queryEmbedding, topK = 5, filter = {}) {
   try {
-    const indexName = process.env.PINECONE_INDEX_NAME || 'rag-chatbot';
+    const indexName = process.env.PINECONE_INDEX_NAME || 'chatbot';
     const index = pinecone.index(indexName);
 
     const queryResponse = await index.query({
@@ -47,7 +47,7 @@ async function searchSimilarChunks(queryEmbedding, topK = 5, filter = {}) {
  */
 async function getDocumentStats() {
   try {
-    const indexName = process.env.PINECONE_INDEX_NAME || 'rag-chatbot';
+    const indexName = process.env.PINECONE_INDEX_NAME || 'chatbot';
     const index = pinecone.index(indexName);
     
     const stats = await index.describeIndexStats();

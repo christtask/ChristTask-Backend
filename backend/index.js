@@ -42,7 +42,7 @@ app.get('/api/test-rag', async (req, res) => {
     const envCheck = {
       openai: !!process.env.OPENAI_API_KEY,
       pinecone: !!process.env.PINECONE_API_KEY,
-      pineconeIndex: process.env.PINECONE_INDEX_NAME || 'rag-chatbot'
+      pineconeIndex: process.env.PINECONE_INDEX_NAME || 'chatbot'
     };
     
     console.log('Environment check:', envCheck);
@@ -93,7 +93,7 @@ app.post('/api/test-chat', async (req, res) => {
     const envCheck = {
       openai: !!process.env.OPENAI_API_KEY,
       pinecone: !!process.env.PINECONE_API_KEY,
-      pineconeIndex: process.env.PINECONE_INDEX_NAME || 'rag-chatbot'
+      pineconeIndex: process.env.PINECONE_INDEX_NAME || 'chatbot'
     };
     
     console.log('Environment check:', envCheck);
