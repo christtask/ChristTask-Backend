@@ -24,7 +24,11 @@ app.use(express.json());
 
 // Health check
 app.get('/', (req, res) => {
-  res.send('Backend is running!');
+  res.json({
+    message: 'Backend is running with AI integration!',
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development'
+  });
 });
 
 // Stripe Checkout session creation endpoint
