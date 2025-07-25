@@ -3,6 +3,7 @@ const { Pinecone } = require('@pinecone-database/pinecone');
 // Initialize Pinecone client
 const pinecone = new Pinecone({
   apiKey: process.env.PINECONE_API_KEY,
+  environment: process.env.PINECONE_ENVIRONMENT || 'gcp-starter',
 });
 
 /**

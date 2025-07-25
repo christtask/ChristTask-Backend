@@ -16,6 +16,7 @@ const openai = process.env.OPENAI_API_KEY ? new OpenAI({
 // Initialize Pinecone
 const pinecone = process.env.PINECONE_API_KEY ? new Pinecone({
   apiKey: process.env.PINECONE_API_KEY,
+  environment: process.env.PINECONE_ENVIRONMENT || 'gcp-starter',
 }) : null;
 
 // Configure CORS to allow your frontend domain
