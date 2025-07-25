@@ -3,9 +3,21 @@ const express = require('express');
 const cors = require('cors');
 const Stripe = require('stripe');
 const axios = require('axios');
+const OpenAI = require('openai');
+const { Pinecone } = require('@pinecone-database/pinecone');
 
 const app = express();
-const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
+const stripe = process.env.STRIPE_SECRET_KEY ? Stripe(process.env.STRIPE_SECRET_KEY) : null;
+
+// Initialize OpenAI
+const openai = process.env.OPENAI_API_KEY ? new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+}) : null;
+
+// Initialize Pinecone
+const pinecone = process.env.PINECONE_API_KEY ? new Pinecone({
+  apiKey: process.env.PINECONE_API_KEY,
+}) : null;
 
 app.use(cors());
 app.use(express.json());
@@ -364,18 +376,79 @@ app.post('/api/chat', async (req, res) => {
   }
 
   try {
-    // For now, return a simple response
-    // In production, you'd integrate with OpenAI, Anthropic, or another AI service
-    const response = `Thank you for your message: "${message}". This is a Christian apologetics AI assistant. I'm here to help you defend your faith with biblical wisdom and evidence. How can I assist you today?`;
+    // Check if OpenAI is configured
+    if (!openai) {
+      return res.status(500).json({ 
+        error: 'OpenAI is not configured. Please set OPENAI_API_KEY environment variable.' 
+      });
+    }
+
+    // Check if Pinecone is configured
+    if (!pinecone) {
+      return res.status(500).json({ 
+        error: 'Pinecone is not configured. Please set PINECONE_API_KEY environment variable.' 
+      });
+    }
+
+    // Get Pinecone index
+    const indexName = process.env.PINECONE_INDEX || 'christian-apologetics';
+    const index = pinecone.index(indexName);
+
+    // Search for relevant context in Pinecone
+    let context = '';
+    try {
+      const queryResponse = await index.query({
+        vector: [0.1, 0.2, 0.3, 0.4, 0.5], // Placeholder vector - you'll need to generate embeddings
+        topK: 3,
+        includeMetadata: true,
+      });
+      
+      if (queryResponse.matches && queryResponse.matches.length > 0) {
+        context = queryResponse.matches.map(match => match.metadata?.text || '').join(' ');
+      }
+    } catch (pineconeError) {
+      console.error('Pinecone search error:', pineconeError);
+      // Continue without context if Pinecone fails
+    }
+
+    // Create system prompt for Christian apologetics
+    const systemPrompt = `You are a Christian apologetics AI assistant. Your role is to help defend the Christian faith with biblical wisdom, historical evidence, and logical reasoning. 
+
+${context ? `Here is some relevant context: ${context}` : ''}
+
+When answering questions:
+1. Use biblical references when appropriate
+2. Provide historical and archaeological evidence when relevant
+3. Use logical reasoning and philosophical arguments
+4. Be respectful and loving in your approach
+5. Acknowledge when certain questions may not have definitive answers
+6. Focus on building faith rather than just winning arguments
+
+Always respond in a helpful, informative, and Christ-like manner.`;
+
+    // Call OpenAI API
+    const completion = await openai.chat.completions.create({
+      model: process.env.OPENAI_MODEL || 'gpt-3.5-turbo',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: message }
+      ],
+      max_tokens: 1000,
+      temperature: 0.7,
+    });
+
+    const aiResponse = completion.choices[0]?.message?.content || 'I apologize, but I was unable to generate a response. Please try again.';
     
     res.json({ 
-      response,
-      timestamp: new Date().toISOString()
+      response: aiResponse,
+      timestamp: new Date().toISOString(),
+      context: context ? 'Used RAG context' : 'No context available'
     });
   } catch (error) {
     console.error('Chat error:', error);
     res.status(500).json({ 
-      error: 'An error occurred while processing your message.' 
+      error: 'An error occurred while processing your message.',
+      details: error.message 
     });
   }
 });
