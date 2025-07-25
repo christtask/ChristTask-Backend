@@ -4,8 +4,8 @@
   "description": "Backend server for ChristTaskLovable AI",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
-    "dev": "nodemon index.js",
+    "start": "node index-simple.js",
+    "dev": "nodemon index-simple.js",
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "npm install"
   },

@@ -18,7 +18,19 @@ const pinecone = process.env.PINECONE_API_KEY ? new Pinecone({
   apiKey: process.env.PINECONE_API_KEY,
 }) : null;
 
-app.use(cors());
+// Configure CORS to allow your frontend domain
+app.use(cors({
+  origin: [
+    'https://christ-task-mu.vercel.app',
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'http://localhost:4173'
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+}));
+
 app.use(express.json());
 
 // Health check
