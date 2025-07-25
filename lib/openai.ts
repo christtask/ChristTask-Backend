@@ -4,9 +4,15 @@ import { config } from 'dotenv';
 // Load environment variables from .env.local
 config({ path: '.env.local' });
 
+// Validate OpenAI API key
+const apiKey = process.env.OPENAI_API_KEY?.trim();
+if (!apiKey) {
+  throw new Error("Missing OpenAI API key");
+}
+
 // Initialize OpenAI client
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY!,
+  apiKey,
 });
 
 /**
