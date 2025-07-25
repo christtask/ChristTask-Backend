@@ -131,7 +131,8 @@ Always respond in a helpful, informative, and Christ-like manner.`;
       topic: 'General Apologetics',
       difficulty: 'Intermediate',
       timestamp: new Date().toISOString(),
-      context: context ? 'Used RAG context' : 'No context available'
+      context: context ? 'Used RAG context' : 'No context available',
+      response: aiResponse  // Add this for compatibility
     });
     
   } catch (error) {
