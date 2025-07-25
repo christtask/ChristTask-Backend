@@ -1,14 +1,11 @@
 import { useAuth } from '@/hooks/useAuth';
-
 import RAGChatbotSimple from '../components/RAGChatbotSimple';
-
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useNavigate } from 'react-router-dom';
 
 export default function ChatbotPage() {
   const { user } = useAuth();
-
   const navigate = useNavigate();
 
   // If user is not logged in, redirect to login
@@ -30,40 +27,9 @@ export default function ChatbotPage() {
     );
   }
 
-  // Show loading state
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-lg">Loading...</div>
-      </div>
-    );
-  }
-
-  // Show error state only if there's a specific error (not network issues)
-  if (error && !error.includes('Network error')) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle className="text-center">Error</CardTitle>
-          </CardHeader>
-          <CardContent className="text-center space-y-4">
-            <p className="text-gray-600">Unable to load subscription status.</p>
-            <Button onClick={() => window.location.reload()} className="w-full">
-              Try Again
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  // User is logged in, show chatbot with subscription status
+  // User is logged in, show chatbot
   return (
     <div className="flex flex-col flex-1 min-h-0 h-full">
-      {/* Show expired subscription notice if applicable */}
-
-      
       {/* Show chatbot */}
       <RAGChatbotSimple />
     </div>
