@@ -2,6 +2,29 @@ const { generateEmbedding, generateChatCompletion, getSystemPrompt } = require('
 const { searchSimilarChunks } = require('./pinecone');
 
 /**
+ * Extract scripture references from text
+ */
+function extractScriptureReferences(text) {
+  const bibleRefs = [];
+  const quranRefs = [];
+
+  // Simple regex patterns for scripture references
+  const biblePattern = /(?:John|Matthew|Mark|Luke|Acts|Romans|Corinthians|Galatians|Ephesians|Philippians|Colossians|Thessalonians|Timothy|Titus|Philemon|Hebrews|James|Peter|John|Jude|Revelation)\s+\d+:\d+/gi;
+  const quranPattern = /(?:Surah|Quran)\s+\d+(?::\d+)?/gi;
+
+  const bibleMatches = text.match(biblePattern) || [];
+  const quranMatches = text.match(quranPattern) || [];
+
+  bibleRefs.push(...bibleMatches);
+  quranRefs.push(...quranMatches);
+
+  return {
+    bible: [...new Set(bibleRefs)],
+    quran: [...new Set(quranRefs)]
+  };
+}
+
+/**
  * Main RAG function that searches for relevant content and generates a response
  */
 async function generateRAGResponse(
@@ -107,66 +130,67 @@ function buildChatMessages(userQuery, context, chatHistory) {
 }
 
 /**
- * Extract scripture references from text
- */
-function extractScriptureReferences(text) {
-  const bibleRefs = [];
-  const quranRefs = [];
-
-  // Simple regex patterns for scripture references
-  const biblePattern = /(?:John|Matthew|Mark|Luke|Acts|Romans|Corinthians|Galatians|Ephesians|Philippians|Colossians|Thessalonians|Timothy|Titus|Philemon|Hebrews|James|Peter|John|Jude|Revelation)\s+\d+:\d+/gi;
-  const quranPattern = /(?:Surah|Quran)\s+\d+(?::\d+)?/gi;
-
-  const bibleMatches = text.match(biblePattern) || [];
-  const quranMatches = text.match(quranPattern) || [];
-
-  bibleRefs.push(...bibleMatches);
-  quranRefs.push(...quranMatches);
-
-  return {
-    bible: [...new Set(bibleRefs)],
-    quran: [...new Set(quranRefs)]
-  };
-}
-
-/**
  * Determine topic from search results
  */
 function determineTopic(results) {
-  if (results.length === 0) return 'General';
+  if (!results || results.length === 0) {
+    return 'General Apologetics';
+  }
+
+  // Analyze the content to determine topic
+  const text = results.map(r => r.text).join(' ').toLowerCase();
   
-  const topics = results.map(r => r.metadata.topic).filter(Boolean);
-  if (topics.length === 0) return 'General';
+  if (text.includes('trinity') || text.includes('god') || text.includes('father') || text.includes('son') || text.includes('holy spirit')) {
+    return 'Trinity and God';
+  }
   
-  // Return most common topic
-  const topicCounts = {};
-  topics.forEach(topic => {
-    topicCounts[topic] = (topicCounts[topic] || 0) + 1;
-  });
+  if (text.includes('jesus') || text.includes('christ') || text.includes('messiah')) {
+    return 'Jesus Christ';
+  }
   
-  return Object.keys(topicCounts).reduce((a, b) => 
-    topicCounts[a] > topicCounts[b] ? a : b
-  );
+  if (text.includes('bible') || text.includes('scripture') || text.includes('gospel')) {
+    return 'Bible and Scripture';
+  }
+  
+  if (text.includes('faith') || text.includes('belief') || text.includes('salvation')) {
+    return 'Faith and Salvation';
+  }
+  
+  if (text.includes('islam') || text.includes('muslim') || text.includes('quran')) {
+    return 'Islam and Muslim Apologetics';
+  }
+  
+  if (text.includes('atheism') || text.includes('atheist') || text.includes('evolution')) {
+    return 'Atheism and Evolution';
+  }
+  
+  return 'General Apologetics';
 }
 
 /**
- * Determine difficulty from search results
+ * Determine difficulty level from search results
  */
 function determineDifficulty(results) {
-  if (results.length === 0) return 'Beginner';
+  if (!results || results.length === 0) {
+    return 'Intermediate';
+  }
+
+  // Analyze content complexity
+  const text = results.map(r => r.text).join(' ');
+  const wordCount = text.split(' ').length;
+  const avgWordLength = text.replace(/[^a-zA-Z]/g, '').length / text.split(' ').length;
   
-  const difficulties = results.map(r => r.metadata.difficulty).filter(Boolean);
-  if (difficulties.length === 0) return 'Beginner';
+  // Check for complex theological terms
+  const complexTerms = ['trinity', 'hypostatic', 'incarnation', 'atonement', 'justification', 'sanctification', 'eschatology'];
+  const hasComplexTerms = complexTerms.some(term => text.toLowerCase().includes(term));
   
-  // Return most common difficulty
-  const diffCounts = {};
-  difficulties.forEach(diff => {
-    diffCounts[diff] = (diffCounts[diff] || 0) + 1;
-  });
-  
-  return Object.keys(diffCounts).reduce((a, b) => 
-    diffCounts[a] > diffCounts[b] ? a : b
-  );
+  if (hasComplexTerms || avgWordLength > 6) {
+    return 'Advanced';
+  } else if (wordCount > 500) {
+    return 'Intermediate';
+  } else {
+    return 'Beginner';
+  }
 }
 
 module.exports = {
