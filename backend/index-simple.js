@@ -66,32 +66,45 @@ app.post('/api/chat', async (req, res) => {
       });
     }
     
-    // Generate embedding for user query
+    // Generate embedding for user query (with timeout)
     let context = '';
     if (process.env.PINECONE_API_KEY && pinecone) {
       try {
-        const queryEmbedding = await openai.embeddings.create({
+        // Add timeout to prevent hanging
+        const embeddingPromise = openai.embeddings.create({
           model: 'text-embedding-3-small',
           input: message,
           encoding_format: 'float',
         });
         
+        const queryEmbedding = await Promise.race([
+          embeddingPromise,
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Embedding timeout')), 5000)
+          )
+        ]);
+        
         const indexName = process.env.PINECONE_INDEX_NAME || 'chatbot';
         const index = pinecone.index(indexName);
         
-        const queryResponse = await index.query({
-          vector: queryEmbedding.data[0].embedding,
-          topK: 3,
-          includeMetadata: true,
-        });
+        const queryResponse = await Promise.race([
+          index.query({
+            vector: queryEmbedding.data[0].embedding,
+            topK: 2, // Reduced from 3 to 2 for speed
+            includeMetadata: true,
+          }),
+          new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Pinecone timeout')), 3000)
+          )
+        ]);
         
         if (queryResponse.matches && queryResponse.matches.length > 0) {
           context = queryResponse.matches.map(match => match.metadata?.text || '').join(' ');
           console.log(`✅ Found ${queryResponse.matches.length} relevant chunks from Pinecone`);
         }
-      } catch (pineconeError) {
-        console.error('⚠️ Pinecone search failed:', pineconeError.message);
-        // Continue without context
+      } catch (error) {
+        console.error('⚠️ RAG search failed:', error.message);
+        // Continue without context for faster response
       }
     }
     
@@ -111,16 +124,21 @@ When answering questions:
 
 Always respond in a helpful, informative, and Christ-like manner.`;
 
-    // Generate response using OpenAI
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-3.5-turbo',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: message }
-      ],
-      max_tokens: 1000,
-      temperature: 0.7,
-    });
+    // Generate response using OpenAI (optimized)
+    const completion = await Promise.race([
+      openai.chat.completions.create({
+        model: 'gpt-3.5-turbo',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: message }
+        ],
+        max_tokens: 800, // Reduced from 1000 for speed
+        temperature: 0.7,
+      }),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('OpenAI timeout')), 10000)
+      )
+    ]);
 
     const aiResponse = completion.choices[0]?.message?.content || 'I apologize, but I was unable to generate a response. Please try again.';
     
