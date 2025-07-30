@@ -1,6 +1,11 @@
+/// <reference types="https://deno.land/x/deno@v1.37.0/lib.deno.d.ts" />
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 
-const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+const apiKey = Deno.env.get("OPENAI_API_KEY")?.trim();
+if (!apiKey) {
+  throw new Error("Missing OpenAI API key");
+}
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -20,7 +25,7 @@ serve(async (req) => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${OPENAI_API_KEY}`,
+        "Authorization": `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
         model: "gpt-3.5-turbo",

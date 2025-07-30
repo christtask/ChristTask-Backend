@@ -1,5 +1,5 @@
 import { generateChatCompletion, getSystemPrompt } from './openai';
-import { extractScriptureReferences } from '@/utils/scriptureParser';
+import { extractScriptureReferences } from '../utils/scriptureParser';
 
 // Only load content on server-side
 let apologeticsContent = '';

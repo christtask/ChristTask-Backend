@@ -1,0 +1,32 @@
+* [33m81f31054[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m Create answering_islam_christ_sacrifice.json
+* [33m4d3c590d[m Create answering_islam_christ_sacrifice_part__c.json
+* [33mbf7a566c[m Create config.py
+* [33m5bfdc8e8[m Create chat_endpoints.py
+* [33m4bfdeb94[m Create main.py
+* [33m027a7e1c[m Update index.js
+* [33m756d5650[m Update index.js
+* [33mb218e510[m Update index.js
+* [33m1e032864[m Update package.json
+* [33m2828f9b9[m Update index.js
+* [33m2f9e078f[m Update index.js
+* [33mb4d0c363[m Update package.json
+* [33mb2f1f000[m Create index.js
+* [33m6ca96fe4[m Add build script to package.json for proper Render deployment
+* [33me22640ef[m Update backend with AI integration and fix health check message
+* [33md1feac8e[m Add OpenAI and Pinecone integration to backend
+* [33m22ef18ef[m Fix ChatbotPage - remove all subscription logic and undefined variables
+* [33m80352a34[m Remove subscription checking from chatbot page
+* [33mb57ae833[m Fix Vercel routing configuration for SPA
+* [33m95cc9f2d[m Fix Vite proxy configuration to prevent routing conflicts
+* [33m18e3fa03[m Update backend URLs to use deployed Render backend
+* [33m14027f75[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m Add deployment trigger comment
+* [33mad624d18[m Fix package.json with correct backend configuration
+* [33m6971855c[m Create minimal backend for deployment
+* [33m38d7b810[m Update health check message to trigger deployment
+* [33mf9c9e5ba[m Add better health check and test endpoints
+* [33m1f0071ba[m Remove node_modules and add to .gitignore
+* [33m6c81ec36[m Remove node_modules, .next, and dist from repo and update .gitignore
+* [33m7f6a5d63[m Initial backend commit
+* [33m3838ae80[m Remove node_modules and add to .gitignore
+* [33m569d83b8[m Remove node_modules, .next, and dist from repo and update .gitignore
+* [33m41837948[m Initial backend commit

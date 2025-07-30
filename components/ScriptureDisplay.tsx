@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { ScriptureReference } from '@/types/chat';
-import { getBibleVerse, getBibleVerses } from '@/lib/bible';
-import { getQuranVerse, getQuranVerses } from '@/lib/quran';
+import { ScriptureReference } from '../types/chat';
+import { getBibleVerse, getBibleVerses } from '../lib/bible';
+import { getQuranVerse, getQuranVerses } from '../lib/quran';
 import { BookOpen, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
 
 interface ScriptureDisplayProps {

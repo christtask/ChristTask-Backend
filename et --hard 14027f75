@@ -1,0 +1,10 @@
+* [33m49a5446e[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m Add all essential backend files for RAG chatbot
+* [33m14027f75[m Add deployment trigger comment
+* [33mad624d18[m Fix package.json with correct backend configuration
+* [33m6971855c[m Create minimal backend for deployment
+* [33m38d7b810[m Update health check message to trigger deployment
+* [33mf9c9e5ba[m Add better health check and test endpoints
+* [33m1f0071ba[m Remove node_modules and add to .gitignore
+* [33m6c81ec36[m Remove node_modules, .next, and dist from repo and update .gitignore
+* [33m7f6a5d63[m Initial backend commit
+* [33m81f31054[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m Create answering_islam_christ_sacrifice.json

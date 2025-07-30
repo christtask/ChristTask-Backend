@@ -93,18 +93,24 @@ export default function ApologeticsChat({ className = '' }: ApologeticsChatProps
       }
 
       const data = await response.json();
+      
+      console.log('API Response data:', data);
+      console.log('Answer field:', data.answer);
+      console.log('Response field:', data.response);
 
       // Update loading message with actual response
       const assistantMessage: ChatMessage = {
         id: loadingMessage.id,
         role: 'assistant',
-        content: data.response,
+        content: data.answer || data.response || 'No response received', // Try 'answer' first, fallback to 'response'
         timestamp: new Date(),
         sources: data.sources,
         scriptureReferences: data.scriptureReferences,
         topic: data.topic,
         difficulty: data.difficulty,
       };
+      
+      console.log('Assistant message content:', assistantMessage.content);
 
       setMessages(prev => 
         prev.map(msg => msg.id === loadingMessage.id ? assistantMessage : msg)

@@ -1,5 +1,5 @@
-import { parseBibleReference, getBibleVerse } from '@/lib/bible';
-import { parseQuranReference, getQuranVerse } from '@/lib/quran';
+import { parseBibleReference, getBibleVerse } from '../lib/bible';
+import { parseQuranReference, getQuranVerse } from '../lib/quran';
 
 export interface ScriptureReference {
   type: 'bible' | 'quran';

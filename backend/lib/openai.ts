@@ -1,5 +1,7 @@
 import OpenAI from 'openai';
 import { config } from 'dotenv';
+import * as fs from 'fs';
+import * as path from 'path';
 
 // Load environment variables from .env.local
 config({ path: '.env.local' });
@@ -159,26 +161,28 @@ Respond in JSON format:
 }
 
 /**
+ * Load apologist profile from JSON file
+ */
+export function loadApologistProfile(): any {
+  try {
+    const profilePath = path.join(__dirname, '../config/apologist-profile.json');
+    const profileData = fs.readFileSync(profilePath, 'utf8');
+    return JSON.parse(profileData);
+  } catch (error) {
+    console.error('Error loading apologist profile:', error);
+    // Return default profile if file cannot be loaded
+    return {
+      system_prompt: "You are a Christian apologetics AI assistant. Your role is to help defend the Christian faith with biblical wisdom, historical evidence, and logical reasoning.\n\nWhen answering questions:\n1. Use biblical references when appropriate\n2. Provide historical and archaeological evidence when relevant\n3. Use logical reasoning and philosophical arguments\n4. Be respectful and loving in your approach\n5. Acknowledge when certain questions may not have definitive answers\n6. Focus on building faith rather than just winning arguments\n7. Use the provided context from the apologetics database to give accurate, well-informed answers\n\nAlways respond in a helpful, informative, and Christ-like manner."
+    };
+  }
+}
+
+/**
  * Generate a system prompt for the apologetics assistant
  */
 export function getSystemPrompt(): string {
-  return `You are a Christian apologetics assistant providing concise, direct responses to faith questions.
-
-Key guidelines:
-- Keep responses brief and to the point (2-3 paragraphs max)
-- Provide direct biblical support with specific verses
-- Include relevant Quranic contradictions when applicable
-- Use clear, simple language
-- Avoid repetition and verbose explanations
-- Focus on the most important points only
-
-Format responses as:
-1. Direct answer (1 paragraph)
-2. Key biblical support (1-2 verses)
-3. Brief counter-evidence if applicable (1 paragraph max)
-
-For Bible references: John 3:16, Romans 8:28
-For Quran references: Surah 2:106, Quran 9:5`;
+  const profile = loadApologistProfile();
+  return profile.system_prompt;
 }
 
 export { openai }; 

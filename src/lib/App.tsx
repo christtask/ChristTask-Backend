@@ -9,6 +9,8 @@ import { WelcomeToChatbot } from "../components/WelcomeToChatbot";
 import { BiblePage } from "../components/BiblePage";
 import { ChatbotSuite } from "../components/ChatbotSuite";
 import { AIChatbotTest } from "../components/AIChatbotTest";
+import { RAGTest } from "../components/RAGTest";
+import { SimpleRAGTest } from "../components/SimpleRAGTest";
 import { useState, useEffect } from 'react';
 import { SidebarNavigation } from '../components/SidebarNavigation';
 import ChatbotPage from '../pages/ChatbotPage';
@@ -28,6 +30,8 @@ function AppRoutes({ activeTab, setActiveTab }: { activeTab: string; setActiveTa
         <Route path="/chatbot" element={<ChatbotPage />} />
         <Route path="/chatbot-simple" element={<ChatbotPage />} />
         <Route path="/chatbot-test" element={<AIChatbotTest />} />
+        <Route path="/rag-test" element={<RAGTest />} />
+        <Route path="/simple-rag-test" element={<SimpleRAGTest />} />
         <Route path="/bible" element={<BiblePage />} />
         <Route path="/forum" element={<div style={{padding:40, color:'#333', fontSize:24}}>Forum Coming Soon...</div>} />
         <Route path="/login" element={<AuthPage initialMode="signin" onBack={() => navigate('/')} />} />
