@@ -1,3 +1,5 @@
+/// <reference types="https://deno.land/x/deno@v1.37.0/lib.deno.d.ts" />
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 
 const apiKey = Deno.env.get("OPENAI_API_KEY")?.trim();

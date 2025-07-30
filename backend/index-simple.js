@@ -23,6 +23,8 @@ const pinecone = process.env.PINECONE_API_KEY ? new Pinecone({
 app.use(cors({
   origin: [
     'https://christ-task-mu.vercel.app',
+    'https://christtask.com',
+    'https://www.christtask.com',
     'http://localhost:5173',
     'http://localhost:3000',
     'http://localhost:4173'

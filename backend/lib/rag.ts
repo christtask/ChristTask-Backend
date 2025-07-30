@@ -118,8 +118,18 @@ function buildChatMessages(
   context: string,
   chatHistory: ChatMessage[]
 ): any[] {
+  // Load the full apologist profile
+  const fs = require('fs');
+  const path = require('path');
+  
+  const profilePath = path.join(__dirname, '..', 'config', 'apologist-profile.json');
+  const profile = JSON.parse(fs.readFileSync(profilePath, 'utf8'));
+  
   const messages = [
-    { role: 'system', content: getSystemPrompt() },
+    { 
+      role: 'system', 
+      content: `${profile.system_prompt}\n\n${context}` 
+    },
   ];
 
   // Add recent chat history (last 10 messages to avoid token limits)
