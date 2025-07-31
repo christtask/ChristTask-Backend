@@ -205,7 +205,10 @@ export default function ApologeticsChat({ className = '' }: ApologeticsChatProps
                   </div>
                 ) : (
                   <div>
-                    <div className="whitespace-pre-wrap text-sm sm:text-base leading-relaxed">{message.content}</div>
+                    <div 
+                      className="text-sm sm:text-base leading-relaxed"
+                      dangerouslySetInnerHTML={{ __html: message.content }}
+                    />
                     
 
                     

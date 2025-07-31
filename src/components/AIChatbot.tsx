@@ -219,7 +219,10 @@ const FullChatInterface = ({
                   ? 'bg-gray-600 text-white'
                   : 'bg-gray-800 text-white'
               }`}>
-                <div className="whitespace-pre-wrap text-sm leading-relaxed">{message.content}</div>
+                <div 
+                  className="text-sm leading-relaxed"
+                  dangerouslySetInnerHTML={{ __html: message.content }}
+                />
                 <div className="text-xs text-gray-500 mt-2">
                   {formatTime(message.timestamp)}
                 </div>

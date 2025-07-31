@@ -374,14 +374,13 @@ export const ChatInterface = ({ selectedTopic }: ChatInterfaceProps) => {
             className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
           >
             <div
-              className={`max-w-[80%] px-4 py-3 rounded-2xl shadow text-base whitespace-pre-wrap break-words ${
+              className={`max-w-[80%] px-4 py-3 rounded-2xl shadow text-base break-words ${
                 message.sender === 'user'
                   ? 'bg-green-600 text-white rounded-br-md'
                   : 'bg-[#232323] text-gray-100 rounded-bl-md'
               }`}
-            >
-              {message.content}
-            </div>
+              dangerouslySetInnerHTML={{ __html: message.content }}
+            />
           </div>
         ))}
         <div ref={messagesEndRef} />
