@@ -46,7 +46,7 @@ app.use(express.json());
 app.get('/', (req, res) => {
   console.log('🏥 Health check requested');
   res.json({
-    message: 'Backend is running with AI integration!',
+    message: 'Backend is running with AI integration - Updated!',
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development',
     status: 'healthy'
