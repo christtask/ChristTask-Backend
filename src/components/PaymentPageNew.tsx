@@ -130,18 +130,12 @@ const PaymentPageNewInner = () => {
 
       // After successful API call
       setIsProcessing(false);
-      setShowSuccess(true);
-      
-      // If we get here, the subscription was created successfully
-      setSuccess(
-        `🎉 Subscription successful! Plan: ${PLANS.find(p => p.id === selectedPlan)?.label}. Your subscription is now active.`
-      );
       
       // Clear the form
       setCouponCode("");
       cardElement.clear();
       
-      // Immediately redirect to chatbot
+      // Immediately redirect to chatbot without showing success message
       navigate('/chatbot');
       return;
       

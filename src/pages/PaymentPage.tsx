@@ -236,16 +236,10 @@ const PaymentPage = () => {
         console.log('User automatically signed in successfully');
       }
       
-      // Show success message
-      toast({
-        title: "Payment Successful!",
-        description: "Your account has been created and subscription activated. Redirecting to chatbot...",
-      });
-      
-      // Redirect to chatbot page
+      // Add a small delay to ensure authentication state is updated
       setTimeout(() => {
         navigate('/chatbot');
-      }, 2000);
+      }, 1000);
     } catch (error: any) {
       setError(error.message || 'Payment failed.');
     }
