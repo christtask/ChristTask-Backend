@@ -59,7 +59,21 @@ app.get('/api/test', (req, res) => {
   res.json({
     message: 'Backend API is working!',
     timestamp: new Date().toISOString(),
-    endpoints: ['/api/chat', '/api/test-rag', '/api/test-chat']
+    endpoints: ['/api/chat', '/api/test-rag', '/api/test-chat', '/api/webhook', '/api/webhook-status']
+  });
+});
+
+// Webhook status endpoint
+app.get('/api/webhook-status', (req, res) => {
+  console.log('🔗 Webhook status endpoint requested');
+  res.json({
+    message: 'Webhook endpoints are available',
+    timestamp: new Date().toISOString(),
+    webhookUrl: '/api/webhook',
+    status: 'active',
+    environment: process.env.NODE_ENV || 'development',
+    stripeConfigured: !!process.env.STRIPE_SECRET_KEY,
+    webhookSecretConfigured: !!process.env.STRIPE_WEBHOOK_SECRET
   });
 });
 
