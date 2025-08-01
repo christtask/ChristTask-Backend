@@ -7,6 +7,7 @@ const OpenAI = require('openai');
 const { Pinecone } = require('@pinecone-database/pinecone');
 const rag = require('./lib/rag.js'); // Use JavaScript version
 
+// Force redeployment - Webhook endpoints are now properly configured
 // Local fallback function
 function fallback() {
   return "This is a fallback response. The full RAG system is temporarily unavailable.";
