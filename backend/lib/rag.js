@@ -7,20 +7,25 @@ const { searchSimilarChunks } = require('./pinecone');
 function extractScriptureReferences(text) {
   const bibleRefs = [];
   const quranRefs = [];
+  const torahRefs = [];
 
-  // Simple regex patterns for scripture references
-  const biblePattern = /(?:John|Matthew|Mark|Luke|Acts|Romans|Corinthians|Galatians|Ephesians|Philippians|Colossians|Thessalonians|Timothy|Titus|Philemon|Hebrews|James|Peter|John|Jude|Revelation)\s+\d+:\d+/gi;
-  const quranPattern = /(?:Surah|Quran)\s+\d+(?::\d+)?/gi;
+  // Enhanced regex patterns for scripture references
+  const biblePattern = /(?:John|Matthew|Mark|Luke|Acts|Romans|Corinthians|Galatians|Ephesians|Philippians|Colossians|Thessalonians|Timothy|Titus|Philemon|Hebrews|James|Peter|John|Jude|Revelation|Genesis|Exodus|Leviticus|Numbers|Deuteronomy|Joshua|Judges|Ruth|Samuel|Kings|Chronicles|Ezra|Nehemiah|Esther|Job|Psalms|Proverbs|Ecclesiastes|Song of Solomon|Isaiah|Jeremiah|Lamentations|Ezekiel|Daniel|Hosea|Joel|Amos|Obadiah|Jonah|Micah|Nahum|Habakkuk|Zephaniah|Haggai|Zechariah|Malachi)\s+\d+:\d+/gi;
+  const quranPattern = /(?:Surah|Quran|Sura)\s+\d+(?::\d+)?/gi;
+  const torahPattern = /(?:Genesis|Exodus|Leviticus|Numbers|Deuteronomy)\s+\d+:\d+/gi;
 
   const bibleMatches = text.match(biblePattern) || [];
   const quranMatches = text.match(quranPattern) || [];
+  const torahMatches = text.match(torahPattern) || [];
 
   bibleRefs.push(...bibleMatches);
   quranRefs.push(...quranMatches);
+  torahRefs.push(...torahMatches);
 
   return {
     bible: [...new Set(bibleRefs)],
-    quran: [...new Set(quranRefs)]
+    quran: [...new Set(quranRefs)],
+    torah: [...new Set(torahRefs)]
   };
 }
 
@@ -145,6 +150,21 @@ function determineTopic(results) {
   // Analyze the content to determine topic
   const text = results.map(r => r.text).join(' ').toLowerCase();
   
+  // Comparative apologetics topics
+  if (text.includes('quran') || text.includes('surah') || text.includes('islam') || text.includes('muslim')) {
+    if (text.includes('jesus') || text.includes('christ') || text.includes('divinity')) {
+      return 'Quran-Christianity Comparison';
+    }
+    return 'Islam and Muslim Apologetics';
+  }
+  
+  if (text.includes('torah') || text.includes('pentateuch') || text.includes('messianic prophecy')) {
+    if (text.includes('jesus') || text.includes('christ')) {
+      return 'Torah-Christianity Comparison';
+    }
+    return 'Jewish-Christian Dialogue';
+  }
+  
   if (text.includes('trinity') || text.includes('god') || text.includes('father') || text.includes('son') || text.includes('holy spirit')) {
     return 'Trinity and God';
   }
@@ -161,12 +181,12 @@ function determineTopic(results) {
     return 'Faith and Salvation';
   }
   
-  if (text.includes('islam') || text.includes('muslim') || text.includes('quran')) {
-    return 'Islam and Muslim Apologetics';
-  }
-  
   if (text.includes('atheism') || text.includes('atheist') || text.includes('evolution')) {
     return 'Atheism and Evolution';
+  }
+  
+  if (text.includes('comparison') || text.includes('versus') || text.includes('debate')) {
+    return 'Comparative Apologetics';
   }
   
   return 'General Apologetics';
