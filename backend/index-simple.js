@@ -34,6 +34,97 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
 }));
 
+// Stripe webhook handler - MUST be before express.json() middleware
+app.post('/api/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+  const sig = req.headers['stripe-signature'];
+  const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
+
+  let event;
+
+  try {
+    event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
+  } catch (err) {
+    console.error('Webhook signature verification failed:', err.message);
+    return res.status(400).send(`Webhook Error: ${err.message}`);
+  }
+
+  // Handle the event
+  switch (event.type) {
+    case 'checkout.session.completed':
+      const session = event.data.object;
+      console.log('Checkout completed:', session.id);
+      console.log('Customer:', session.customer_email);
+      console.log('Plan:', session.metadata.plan);
+      
+      // Here you would typically:
+      // 1. Update user subscription in your database
+      // 2. Send confirmation email
+      // 3. Grant access to premium features
+      break;
+      
+    case 'customer.subscription.created':
+      const subscription = event.data.object;
+      console.log('Subscription created:', subscription.id);
+      console.log('Plan:', subscription.metadata.plan);
+      console.log('Current period end:', new Date(subscription.current_period_end * 1000));
+      break;
+      
+    case 'customer.subscription.updated':
+      const updatedSubscription = event.data.object;
+      console.log('Subscription updated:', updatedSubscription.id);
+      console.log('Status:', updatedSubscription.status);
+      console.log('Current period end:', new Date(updatedSubscription.current_period_end * 1000));
+      
+      // Handle subscription status changes
+      if (updatedSubscription.status === 'active') {
+        console.log('Subscription is active');
+        // Update user's subscription status in database
+      } else if (updatedSubscription.status === 'past_due') {
+        console.log('Subscription is past due - payment failed');
+        // Notify user about payment failure
+      } else if (updatedSubscription.status === 'canceled') {
+        console.log('Subscription was canceled');
+        // Update user's subscription status to expired
+      } else if (updatedSubscription.status === 'unpaid') {
+        console.log('Subscription is unpaid');
+        // Update user's subscription status to expired
+      }
+      break;
+      
+    case 'customer.subscription.deleted':
+      const deletedSubscription = event.data.object;
+      console.log('Subscription deleted:', deletedSubscription.id);
+      console.log('Deletion reason:', deletedSubscription.cancellation_reason);
+      
+      // Update user's subscription status to expired
+      // This is the main event for subscription expiration
+      break;
+      
+    case 'invoice.payment_failed':
+      const failedInvoice = event.data.object;
+      console.log('Payment failed for invoice:', failedInvoice.id);
+      console.log('Customer:', failedInvoice.customer);
+      console.log('Amount due:', failedInvoice.amount_due);
+      
+      // Handle failed payment - subscription will be marked as past_due
+      break;
+      
+    case 'invoice.payment_succeeded':
+      const successfulInvoice = event.data.object;
+      console.log('Payment succeeded for invoice:', successfulInvoice.id);
+      console.log('Customer:', successfulInvoice.customer);
+      
+      // Handle successful payment - subscription will be marked as active
+      break;
+      
+    default:
+      console.log(`Unhandled event type ${event.type}`);
+  }
+
+  res.json({ received: true });
+});
+
+// Now apply express.json() middleware for all other routes
 app.use(express.json());
 
 // Health check
@@ -553,96 +644,6 @@ app.get('/api/webhook-status', (req, res) => {
     stripeConfigured: !!process.env.STRIPE_SECRET_KEY,
     webhookSecretConfigured: !!process.env.STRIPE_WEBHOOK_SECRET
   });
-});
-
-// Stripe webhook handler for checkout events
-app.post('/api/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
-  const sig = req.headers['stripe-signature'];
-  const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
-
-  let event;
-
-  try {
-    event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
-  } catch (err) {
-    console.error('Webhook signature verification failed:', err.message);
-    return res.status(400).send(`Webhook Error: ${err.message}`);
-  }
-
-  // Handle the event
-  switch (event.type) {
-    case 'checkout.session.completed':
-      const session = event.data.object;
-      console.log('Checkout completed:', session.id);
-      console.log('Customer:', session.customer_email);
-      console.log('Plan:', session.metadata.plan);
-      
-      // Here you would typically:
-      // 1. Update user subscription in your database
-      // 2. Send confirmation email
-      // 3. Grant access to premium features
-      break;
-      
-    case 'customer.subscription.created':
-      const subscription = event.data.object;
-      console.log('Subscription created:', subscription.id);
-      console.log('Plan:', subscription.metadata.plan);
-      console.log('Current period end:', new Date(subscription.current_period_end * 1000));
-      break;
-      
-    case 'customer.subscription.updated':
-      const updatedSubscription = event.data.object;
-      console.log('Subscription updated:', updatedSubscription.id);
-      console.log('Status:', updatedSubscription.status);
-      console.log('Current period end:', new Date(updatedSubscription.current_period_end * 1000));
-      
-      // Handle subscription status changes
-      if (updatedSubscription.status === 'active') {
-        console.log('Subscription is active');
-        // Update user's subscription status in database
-      } else if (updatedSubscription.status === 'past_due') {
-        console.log('Subscription is past due - payment failed');
-        // Notify user about payment failure
-      } else if (updatedSubscription.status === 'canceled') {
-        console.log('Subscription was canceled');
-        // Update user's subscription status to expired
-      } else if (updatedSubscription.status === 'unpaid') {
-        console.log('Subscription is unpaid');
-        // Update user's subscription status to expired
-      }
-      break;
-      
-    case 'customer.subscription.deleted':
-      const deletedSubscription = event.data.object;
-      console.log('Subscription deleted:', deletedSubscription.id);
-      console.log('Deletion reason:', deletedSubscription.cancellation_reason);
-      
-      // Update user's subscription status to expired
-      // This is the main event for subscription expiration
-      break;
-      
-    case 'invoice.payment_failed':
-      const failedInvoice = event.data.object;
-      console.log('Payment failed for invoice:', failedInvoice.id);
-      console.log('Customer:', failedInvoice.customer);
-      console.log('Amount due:', failedInvoice.amount_due);
-      
-      // Handle failed payment - subscription will be marked as past_due
-      break;
-      
-    case 'invoice.payment_succeeded':
-      const successfulInvoice = event.data.object;
-      console.log('Payment succeeded for invoice:', successfulInvoice.id);
-      console.log('Customer:', successfulInvoice.customer);
-      
-      // Handle successful payment - subscription will be marked as active
-      break;
-      
-    default:
-      console.log(`Unhandled event type ${event.type}`);
-  }
-
-  res.json({ received: true });
 });
 
 const PORT = process.env.PORT || 4242;
