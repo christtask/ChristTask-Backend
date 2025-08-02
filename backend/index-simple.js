@@ -31,7 +31,10 @@ app.use(cors({
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+  exposedHeaders: ['Content-Length', 'X-Requested-With'],
+  preflightContinue: false,
+  optionsSuccessStatus: 204
 }));
 
 // Stripe webhook handler - MUST be before express.json() middleware
@@ -126,6 +129,23 @@ app.post('/api/webhook', express.raw({ type: 'application/json' }), async (req, 
 
 // Now apply express.json() middleware for all other routes
 app.use(express.json());
+
+// OPTIONS handlers for CORS preflight requests
+app.options('/api/chat', (req, res) => {
+  res.header('Access-Control-Allow-Origin', 'https://www.christtask.com');
+  res.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.status(204).end();
+});
+
+app.options('/api/test-chat', (req, res) => {
+  res.header('Access-Control-Allow-Origin', 'https://www.christtask.com');
+  res.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.status(204).end();
+});
 
 // Health check
 app.get('/', (req, res) => {
