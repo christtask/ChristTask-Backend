@@ -1,4 +1,0 @@
-User-agent: *
-Allow: /
-
-Sitemap: https://christtask.com/sitemap.xml
