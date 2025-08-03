@@ -112,31 +112,67 @@ function buildContextFromResults(results, userQuery) {
  * Build chat messages for OpenAI API
  */
 function buildChatMessages(userQuery, context, chatHistory) {
-  // Load the full apologist profile
+  // Load the full apologist profile with proper path validation
   const fs = require('fs');
   const path = require('path');
   
-  const profilePath = path.join(__dirname, '..', 'config', 'apologist-profile.json');
-  const profile = JSON.parse(fs.readFileSync(profilePath, 'utf8'));
-  
-  const messages = [
-    {
-      role: 'system',
-      content: `${profile.system_prompt}\n\n${context}`
+  try {
+    const profilePath = path.join(__dirname, '..', 'config', 'apologist-profile.json');
+    
+    // Validate path to prevent directory traversal attacks
+    const resolvedPath = path.resolve(profilePath);
+    const expectedDir = path.resolve(__dirname, '..', 'config');
+    
+    if (!resolvedPath.startsWith(expectedDir)) {
+      throw new Error('Invalid path access detected');
     }
-  ];
+    
+    if (!fs.existsSync(resolvedPath)) {
+      throw new Error('Profile file not found');
+    }
+    
+    const profile = JSON.parse(fs.readFileSync(resolvedPath, 'utf8'));
+    
+    const messages = [
+      {
+        role: 'system',
+        content: `${profile.system_prompt}\n\n${context}`
+      }
+    ];
 
-  // Add chat history (last 5 messages to avoid token limits)
-  const recentHistory = chatHistory.slice(-5);
-  messages.push(...recentHistory);
+    // Add chat history (last 5 messages to avoid token limits)
+    const recentHistory = chatHistory.slice(-5);
+    messages.push(...recentHistory);
 
-  // Add current user query
-  messages.push({
-    role: 'user',
-    content: userQuery
-  });
+    // Add current user query
+    messages.push({
+      role: 'user',
+      content: userQuery
+    });
 
-  return messages;
+    return messages;
+  } catch (error) {
+    console.error('Error loading apologist profile:', error);
+    // Return default messages if profile cannot be loaded
+    const messages = [
+      {
+        role: 'system',
+        content: `You are a Christian apologetics AI assistant. Your role is to help defend the Christian faith with biblical wisdom, historical evidence, and logical reasoning.\n\n${context}`
+      }
+    ];
+
+    // Add chat history (last 5 messages to avoid token limits)
+    const recentHistory = chatHistory.slice(-5);
+    messages.push(...recentHistory);
+
+    // Add current user query
+    messages.push({
+      role: 'user',
+      content: userQuery
+    });
+
+    return messages;
+  }
 }
 
 /**
@@ -213,7 +249,7 @@ function determineDifficulty(results) {
     return 'Advanced';
   } else if (wordCount > 500) {
     return 'Intermediate';
-  } else {
+      } else {
     return 'Beginner';
   }
 }

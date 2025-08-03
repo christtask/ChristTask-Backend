@@ -1,17 +1,41 @@
 const express = require('express');
 const cors = require('cors');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const helmet = require('helmet');
+const { body, validationResult } = require('express-validator');
 require('dotenv').config();
 
 const app = express();
 
-// Basic rate limiting
+// Security headers with helmet
+app.use(helmet());
+app.use(helmet.contentSecurityPolicy({
+  directives: {
+    defaultSrc: ["'self'"],
+    styleSrc: ["'self'", "'unsafe-inline'"],
+    scriptSrc: ["'self'"],
+  },
+}));
+
+// Enhanced rate limiting
 const rateLimit = require('express-rate-limit');
 
-const limiter = rateLimit({
+const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // limit each IP to 100 requests per windowMs
   message: 'Too many requests from this IP, please try again later.'
+});
+
+const chatLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 10, // limit each IP to 10 chat requests per minute
+  message: 'Too many chat requests, please slow down.'
+});
+
+const subscriptionLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000, // 5 minutes
+  max: 5, // limit each IP to 5 subscription attempts per 5 minutes
+  message: 'Too many subscription attempts, please try again later.'
 });
 
 // Middleware
@@ -31,17 +55,42 @@ app.use(cors({
   preflightContinue: false,
   optionsSuccessStatus: 204
 }));
-app.use(limiter);
-app.use(express.json());
 
-// Security headers
-app.use((req, res, next) => {
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('X-Frame-Options', 'DENY');
-  res.setHeader('X-XSS-Protection', '1; mode=block');
-  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
-  next();
-});
+app.use(generalLimiter);
+app.use(express.json({ limit: '10mb' }));
+
+// Input validation middleware
+const validateSubscription = [
+  body('email').isEmail().normalizeEmail().withMessage('Valid email is required'),
+  body('plan').isIn(['weekly', 'monthly']).withMessage('Plan must be weekly or monthly'),
+  body('paymentMethodId').notEmpty().withMessage('Payment method ID is required'),
+  body('userId').optional().isString().withMessage('User ID must be a string'),
+  body('couponCode').optional().isString().withMessage('Coupon code must be a string'),
+  (req, res, next) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ 
+        success: false,
+        errors: errors.array() 
+      });
+    }
+    next();
+  }
+];
+
+const validateChat = [
+  body('message').notEmpty().trim().isLength({ min: 1, max: 1000 }).withMessage('Message must be between 1 and 1000 characters'),
+  (req, res, next) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ 
+        success: false,
+        errors: errors.array() 
+      });
+    }
+    next();
+  }
+];
 
 // Stripe Price IDs - Replace with your actual price IDs from Stripe Dashboard
 const STRIPE_PRICES = {
@@ -50,7 +99,7 @@ const STRIPE_PRICES = {
 };
 
 // Create recurring subscription
-app.post('/create-subscription', async (req, res) => {
+app.post('/create-subscription', subscriptionLimiter, validateSubscription, async (req, res) => {
   try {
     const { email, userId, plan, paymentMethodId, couponCode } = req.body;
     
@@ -126,7 +175,7 @@ app.post('/create-subscription', async (req, res) => {
     console.error('Subscription creation error:', error);
     res.status(500).json({
       success: false,
-      error: error.message
+      error: 'An error occurred while creating the subscription.'
     });
   }
 });
@@ -136,8 +185,11 @@ app.get('/check-subscription', async (req, res) => {
   try {
     const { email } = req.query;
     
-    if (!email) {
-      return res.status(400).json({ error: 'Email required' });
+    if (!email || !email.includes('@')) {
+      return res.status(400).json({ 
+        success: false,
+        error: 'Valid email required' 
+      });
     }
     
     // Find customer by email
@@ -184,7 +236,8 @@ app.get('/check-subscription', async (req, res) => {
   } catch (error) {
     console.error('Subscription check error:', error);
     res.status(500).json({
-      error: error.message
+      success: false,
+      error: 'An error occurred while checking subscription status.'
     });
   }
 });
@@ -193,6 +246,11 @@ app.get('/check-subscription', async (req, res) => {
 app.post('/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
   const sig = req.headers['stripe-signature'];
   const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
+  
+  if (!endpointSecret) {
+    console.error('Webhook secret not configured');
+    return res.status(500).send('Webhook secret not configured');
+  }
   
   let event;
   
@@ -244,22 +302,17 @@ app.options('/api/chat', (req, res) => {
 });
 
 // Chat endpoint
-app.post('/api/chat', async (req, res) => {
+app.post('/api/chat', chatLimiter, validateChat, async (req, res) => {
   try {
     const { message } = req.body;
     
-    if (!message || !message.trim()) {
-      return res.status(400).json({ 
-        error: 'Message is required.' 
-      });
-    }
-
     console.log('🤖 Processing chat request:', message);
     
     // Check if environment variables are set
     if (!process.env.OPENAI_API_KEY) {
       console.error('❌ OPENAI_API_KEY not set');
       return res.status(500).json({ 
+        success: false,
         error: 'OpenAI API key not configured' 
       });
     }
@@ -271,6 +324,7 @@ app.post('/api/chat', async (req, res) => {
     console.log('✅ Response generated successfully');
     
     res.json({ 
+      success: true,
       answer: aiResponse,
       sources: [],
       scriptureReferences: { bible: [], quran: [], torah: [] },
@@ -284,8 +338,8 @@ app.post('/api/chat', async (req, res) => {
   } catch (error) {
     console.error('❌ Chat error:', error);
     res.status(500).json({ 
-      error: 'An error occurred while processing your message.',
-      details: error.message 
+      success: false,
+      error: 'An error occurred while processing your message.'
     });
   }
 });
@@ -293,6 +347,23 @@ app.post('/api/chat', async (req, res) => {
 // Health check
 app.get('/', (req, res) => {
   res.json({ message: 'Backend is running!' });
+});
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error('Unhandled error:', err);
+  res.status(500).json({
+    success: false,
+    error: 'An unexpected error occurred.'
+  });
+});
+
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    error: 'Endpoint not found'
+  });
 });
 
 const PORT = process.env.PORT || 3000;

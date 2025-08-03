@@ -18,8 +18,24 @@ const openai = new OpenAI({
  */
 function loadApologistProfile() {
   try {
+    const fs = require('fs');
+    const path = require('path');
+    
     const profilePath = path.join(__dirname, '../config/apologist-profile.json');
-    const profileData = fs.readFileSync(profilePath, 'utf8');
+    
+    // Validate path to prevent directory traversal attacks
+    const resolvedPath = path.resolve(profilePath);
+    const expectedDir = path.resolve(__dirname, '..', 'config');
+    
+    if (!resolvedPath.startsWith(expectedDir)) {
+      throw new Error('Invalid path access detected');
+    }
+    
+    if (!fs.existsSync(resolvedPath)) {
+      throw new Error('Profile file not found');
+    }
+    
+    const profileData = fs.readFileSync(resolvedPath, 'utf8');
     return JSON.parse(profileData);
   } catch (error) {
     console.error('Error loading apologist profile:', error);

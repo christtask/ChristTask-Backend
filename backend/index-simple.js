@@ -4,9 +4,41 @@ const cors = require('cors');
 const Stripe = require('stripe');
 const OpenAI = require('openai');
 const { Pinecone } = require('@pinecone-database/pinecone');
+const helmet = require('helmet');
+const { body, validationResult } = require('express-validator');
+const rateLimit = require('express-rate-limit');
 
 const app = express();
 const stripe = process.env.STRIPE_SECRET_KEY ? Stripe(process.env.STRIPE_SECRET_KEY) : null;
+
+// Security headers with helmet
+app.use(helmet());
+app.use(helmet.contentSecurityPolicy({
+  directives: {
+    defaultSrc: ["'self'"],
+    styleSrc: ["'self'", "'unsafe-inline'"],
+    scriptSrc: ["'self'"],
+  },
+}));
+
+// Enhanced rate limiting
+const generalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: 'Too many requests from this IP, please try again later.'
+});
+
+const chatLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 10, // limit each IP to 10 chat requests per minute
+  message: 'Too many chat requests, please slow down.'
+});
+
+const subscriptionLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000, // 5 minutes
+  max: 5, // limit each IP to 5 subscription attempts per 5 minutes
+  message: 'Too many subscription attempts, please try again later.'
+});
 
 // Initialize OpenAI
 const openai = process.env.OPENAI_API_KEY ? new OpenAI({
@@ -36,6 +68,42 @@ app.use(cors({
   preflightContinue: false,
   optionsSuccessStatus: 204
 }));
+
+app.use(generalLimiter);
+app.use(express.json({ limit: '10mb' }));
+
+// Input validation middleware
+const validateChat = [
+  body('message').notEmpty().trim().isLength({ min: 1, max: 1000 }).withMessage('Message must be between 1 and 1000 characters'),
+  (req, res, next) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ 
+        success: false,
+        errors: errors.array() 
+      });
+    }
+    next();
+  }
+];
+
+const validateSubscription = [
+  body('email').isEmail().normalizeEmail().withMessage('Valid email is required'),
+  body('plan').isIn(['weekly', 'monthly']).withMessage('Plan must be weekly or monthly'),
+  body('paymentMethodId').notEmpty().withMessage('Payment method ID is required'),
+  body('userId').optional().isString().withMessage('User ID must be a string'),
+  body('couponCode').optional().isString().withMessage('Coupon code must be a string'),
+  (req, res, next) => {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({ 
+        success: false,
+        errors: errors.array() 
+      });
+    }
+    next();
+  }
+];
 
 // Stripe webhook handler - MUST be before express.json() middleware
 app.post('/api/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
@@ -157,7 +225,7 @@ app.get('/', (req, res) => {
 });
 
 // Simple RAG Chat endpoint
-app.post('/api/chat', async (req, res) => {
+app.post('/api/chat', chatLimiter, validateChat, async (req, res) => {
   const { message } = req.body;
   
   if (!message || !message.trim()) {
@@ -663,6 +731,23 @@ app.get('/api/webhook-status', (req, res) => {
     environment: process.env.NODE_ENV || 'development',
     stripeConfigured: !!process.env.STRIPE_SECRET_KEY,
     webhookSecretConfigured: !!process.env.STRIPE_WEBHOOK_SECRET
+  });
+});
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error('Unhandled error:', err);
+  res.status(500).json({
+    success: false,
+    error: 'An unexpected error occurred.'
+  });
+});
+
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({
+    success: false,
+    error: 'Endpoint not found'
   });
 });
 
