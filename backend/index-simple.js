@@ -152,6 +152,7 @@ async function testPineconeConnectivity() {
     
     while (retryCount < maxRetries) {
       try {
+        // Try describeIndexStats first
         await testIndex.describeIndexStats();
         console.log('✅ Pinecone connectivity test successful');
         return true;
@@ -159,8 +160,23 @@ async function testPineconeConnectivity() {
         retryCount++;
         console.log(`⚠️ Pinecone test attempt ${retryCount} failed:`, error.message);
         
+        // If describeIndexStats fails, try a simple query instead
         if (retryCount >= maxRetries) {
-          throw error;
+          try {
+            console.log('🔄 Trying alternative connectivity test...');
+            // Try a simple query with a test vector
+            const testVector = new Array(1536).fill(0.1);
+            await testIndex.query({
+              vector: testVector,
+              topK: 1,
+              includeMetadata: false
+            });
+            console.log('✅ Alternative Pinecone connectivity test successful');
+            return true;
+          } catch (queryError) {
+            console.log('❌ Alternative test also failed:', queryError.message);
+            throw error; // Throw the original error
+          }
         }
         
         // Wait before retry
@@ -689,7 +705,7 @@ app.get('/api/health', async (req, res) => {
     if (process.env.PINECONE_API_KEY) {
       try {
         const dns = require('dns').promises;
-        const controllerHost = `controller.${process.env.PINECONE_ENVIRONMENT || 'us-east-1'}.pinecone.io`;
+        const controllerHost = `controller.${process.env.PINECONE_ENVIRONMENT || 'aped-4627-b74a'}.pinecone.io`;
         await dns.lookup(controllerHost);
         health.connectivity.dns_resolution = 'success';
         health.connectivity.pinecone_reachable = 'reachable';
