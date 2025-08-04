@@ -72,8 +72,6 @@ if (process.env.OPENAI_API_KEY) {
   console.error('❌ OPENAI_API_KEY not found in environment variables');
 }
 
-// Pinecone connectivity test function (removed - not needed)
-
 // Initialize Pinecone without connectivity test
 let pinecone = null;
 let pineconeConnected = false;
@@ -81,22 +79,16 @@ let pineconeConnected = false;
 async function initializePinecone() {
   if (process.env.PINECONE_API_KEY) {
     try {
-      // Try to create Pinecone client with error handling
-      try {
-        pinecone = new Pinecone({
-          apiKey: process.env.PINECONE_API_KEY,
-          environment: 'aped-4627-b74a', // Use the correct environment from your dashboard
-        });
-      } catch (initError) {
-        console.log('⚠️ Pinecone initialization failed, trying alternative approach...');
-        // Try with a different environment if the first one fails
-        pinecone = new Pinecone({
-          apiKey: process.env.PINECONE_API_KEY,
-          environment: 'aped-4627-b74a',
-        });
-      }
+      // Use environment variable for Pinecone environment
+      const pineconeEnvironment = process.env.PINECONE_ENVIRONMENT || 'us-east-1';
+      
+      pinecone = new Pinecone({
+        apiKey: process.env.PINECONE_API_KEY,
+        environment: pineconeEnvironment,
+      });
+      
       console.log('✅ Pinecone client initialized successfully');
-      console.log(`🌲 Environment: ${process.env.PINECONE_ENVIRONMENT || 'us-east-1'} (using fallback: us-east-1)`);
+      console.log(`🌲 Environment: ${pineconeEnvironment}`);
       console.log(`📚 Index: ${process.env.PINECONE_INDEX_NAME || 'chatbot'}`);
       
       // Skip connectivity test - just assume it works
@@ -375,7 +367,7 @@ app.post('/api/chat', chatLimiter, validateChat, async (req, res) => {
     let context = '';
     let ragStatus = 'not_configured';
     
-         if (process.env.PINECONE_API_KEY && pinecone && pineconeConnected) {
+    if (process.env.PINECONE_API_KEY && pinecone && pineconeConnected) {
       try {
         console.log('🔍 Starting RAG search...');
         
@@ -440,10 +432,10 @@ app.post('/api/chat', chatLimiter, validateChat, async (req, res) => {
           console.log('⚠️ Unknown Pinecone error - continuing without RAG context');
         }
       }
-         } else {
-       console.log('ℹ️ Skipping RAG search - Pinecone temporarily disabled');
-       ragStatus = 'disabled';
-     }
+    } else {
+      console.log('ℹ️ Skipping RAG search - Pinecone temporarily disabled');
+      ragStatus = 'disabled';
+    }
     
     // Add local fallback context for common questions
     if (!context && ragStatus !== 'success') {
@@ -523,7 +515,7 @@ Error details: ${error.message}`;
 // Test RAG system
 app.get('/api/test-rag', async (req, res) => {
   try {
-    console.log('🧪 Testing RAG system...');
+    console.log('�� Testing RAG system...');
     
     const envCheck = {
       openai: !!process.env.OPENAI_API_KEY,
@@ -557,7 +549,7 @@ app.get('/api/health', async (req, res) => {
       server: 'healthy',
       environment: {
         node: process.env.NODE_ENV || 'development',
-                 region: 'aped-4627-b74a'
+        region: 'us-east-1'
       },
       services: {
         openai: {
@@ -569,7 +561,7 @@ app.get('/api/health', async (req, res) => {
           configured: !!process.env.PINECONE_API_KEY,
           initialized: !!pinecone,
           connected: pineconeConnected,
-                     environment: 'aped-4627-b74a',
+          environment: process.env.PINECONE_ENVIRONMENT || 'us-east-1',
           index: process.env.PINECONE_INDEX_NAME || 'chatbot',
           status: pineconeConnected ? 'operational' : (pinecone ? 'connectivity_issue' : 'not_configured')
         },
@@ -589,7 +581,8 @@ app.get('/api/health', async (req, res) => {
     if (process.env.PINECONE_API_KEY) {
       try {
         const dns = require('dns').promises;
-                 const controllerHost = `controller.aped-4627-b74a.pinecone.io`;
+        const pineconeEnvironment = process.env.PINECONE_ENVIRONMENT || 'us-east-1';
+        const controllerHost = `controller.${pineconeEnvironment}.pinecone.io`;
         await dns.lookup(controllerHost);
         health.connectivity.dns_resolution = 'success';
         health.connectivity.pinecone_reachable = 'reachable';
@@ -1010,4 +1003,4 @@ app.listen(PORT, () => {
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🤖 OpenAI: ${process.env.OPENAI_API_KEY ? '✅ Configured' : '❌ Not configured'}`);
   console.log(`🌲 Pinecone: ${process.env.PINECONE_API_KEY ? '✅ Configured' : '❌ Not configured'}`);
-}); 
+});
