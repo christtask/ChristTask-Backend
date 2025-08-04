@@ -365,7 +365,7 @@ app.post('/api/chat', chatLimiter, validateChat, async (req, res) => {
     let context = '';
     let ragStatus = 'not_configured';
     
-    if (process.env.PINECONE_API_KEY && pinecone && pineconeConnected) {
+         if (false) { // Temporarily disable Pinecone RAG
       try {
         console.log('🔍 Starting RAG search...');
         
@@ -430,13 +430,10 @@ app.post('/api/chat', chatLimiter, validateChat, async (req, res) => {
           console.log('⚠️ Unknown Pinecone error - continuing without RAG context');
         }
       }
-    } else if (process.env.PINECONE_API_KEY && pinecone && !pineconeConnected) {
-      console.log('⚠️ Skipping RAG search - Pinecone connectivity test failed during startup');
-      ragStatus = 'connectivity_failed';
-    } else {
-      console.log('ℹ️ Skipping RAG search - Pinecone not configured');
-      ragStatus = 'not_configured';
-    }
+         } else {
+       console.log('ℹ️ Skipping RAG search - Pinecone temporarily disabled');
+       ragStatus = 'disabled';
+     }
     
     // Add local fallback context for common questions
     if (!context && ragStatus !== 'success') {
