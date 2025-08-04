@@ -10,6 +10,9 @@ const rateLimit = require('express-rate-limit');
 
 const app = express();
 
+// Trust proxy for rate limiting behind load balancers
+app.set('trust proxy', 1);
+
 // Initialize Stripe with proper error handling
 let stripe = null;
 if (process.env.STRIPE_SECRET_KEY) {
@@ -88,23 +91,60 @@ async function testPineconeConnectivity() {
       console.log(`✅ DNS resolution successful for ${controllerHost}`);
     } catch (dnsError) {
       console.error(`❌ DNS resolution failed for ${controllerHost}:`, dnsError.message);
-      return false;
+      
+      // Try alternative DNS resolution methods
+      try {
+        console.log('🔄 Trying alternative DNS resolution...');
+        const { exec } = require('child_process');
+        const util = require('util');
+        const execAsync = util.promisify(exec);
+        
+        // Try using nslookup as fallback
+        await execAsync(`nslookup ${controllerHost}`);
+        console.log(`✅ Alternative DNS resolution successful for ${controllerHost}`);
+      } catch (altDnsError) {
+        console.error(`❌ Alternative DNS resolution also failed:`, altDnsError.message);
+        return false;
+      }
     }
 
-    // Test Pinecone client initialization
+    // Test Pinecone client initialization with potential IP override
     const testPinecone = new Pinecone({
       apiKey: process.env.PINECONE_API_KEY,
       environment: process.env.PINECONE_ENVIRONMENT || 'us-east-1',
     });
     
+    // If DNS fails, try with explicit host override
+    if (process.env.PINECONE_HOST_OVERRIDE) {
+      console.log('🔄 Using host override for Pinecone connection');
+      testPinecone.config.host = process.env.PINECONE_HOST_OVERRIDE;
+    }
+    
     // Test basic API call
     const indexName = process.env.PINECONE_INDEX_NAME || 'chatbot';
     const testIndex = testPinecone.index(indexName);
     
-    // Try a simple describe call to test connectivity
-    await testIndex.describeIndexStats();
-    console.log('✅ Pinecone connectivity test successful');
-    return true;
+    // Try a simple describe call to test connectivity with retry
+    let retryCount = 0;
+    const maxRetries = 3;
+    
+    while (retryCount < maxRetries) {
+      try {
+        await testIndex.describeIndexStats();
+        console.log('✅ Pinecone connectivity test successful');
+        return true;
+      } catch (error) {
+        retryCount++;
+        console.log(`⚠️ Pinecone test attempt ${retryCount} failed:`, error.message);
+        
+        if (retryCount >= maxRetries) {
+          throw error;
+        }
+        
+        // Wait before retry
+        await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+      }
+    }
     
   } catch (error) {
     console.error('❌ Pinecone connectivity test failed:', error.message);
