@@ -146,42 +146,23 @@ async function testPineconeConnectivity() {
     const indexName = process.env.PINECONE_INDEX_NAME || 'chatbot';
     const testIndex = testPinecone.index(indexName);
     
-    // Try a simple describe call to test connectivity with retry
-    let retryCount = 0;
-    const maxRetries = 3;
-    
-    while (retryCount < maxRetries) {
-      try {
-        // Try describeIndexStats first
-        await testIndex.describeIndexStats();
-        console.log('✅ Pinecone connectivity test successful');
-        return true;
-      } catch (error) {
-        retryCount++;
-        console.log(`⚠️ Pinecone test attempt ${retryCount} failed:`, error.message);
-        
-        // If describeIndexStats fails, try a simple query instead
-        if (retryCount >= maxRetries) {
-          try {
-            console.log('🔄 Trying alternative connectivity test...');
-            // Try a simple query with a test vector
-            const testVector = new Array(1536).fill(0.1);
-            await testIndex.query({
-              vector: testVector,
-              topK: 1,
-              includeMetadata: false
-            });
-            console.log('✅ Alternative Pinecone connectivity test successful');
-            return true;
-          } catch (queryError) {
-            console.log('❌ Alternative test also failed:', queryError.message);
-            throw error; // Throw the original error
-          }
-        }
-        
-        // Wait before retry
-        await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
-      }
+    // Try a simple query to test connectivity (skip describeIndexStats)
+    try {
+      console.log('🔄 Testing Pinecone connectivity with simple query...');
+      // Try a simple query with a test vector
+      const testVector = new Array(1536).fill(0.1);
+      await testIndex.query({
+        vector: testVector,
+        topK: 1,
+        includeMetadata: false
+      });
+      console.log('✅ Pinecone connectivity test successful');
+      return true;
+    } catch (error) {
+      console.log('❌ Pinecone connectivity test failed:', error.message);
+      console.log('Error type:', error.constructor.name);
+      console.log('Error code:', error.code);
+      return false;
     }
     
   } catch (error) {
