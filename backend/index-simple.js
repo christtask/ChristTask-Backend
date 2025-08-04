@@ -120,6 +120,28 @@ async function testPineconeConnectivity() {
       testPinecone.config.host = process.env.PINECONE_HOST_OVERRIDE;
     }
     
+    // Try manual IP resolution if DNS fails
+    if (!process.env.PINECONE_HOST_OVERRIDE) {
+      try {
+        console.log('🔄 Attempting manual IP resolution...');
+        const { exec } = require('child_process');
+        const util = require('util');
+        const execAsync = util.promisify(exec);
+        
+        // Try to get IP from a public DNS resolver
+        const { stdout } = await execAsync(`dig +short ${controllerHost} @8.8.8.8`);
+        const ipAddress = stdout.trim();
+        
+        if (ipAddress && ipAddress !== '') {
+          console.log(`✅ Manual IP resolution successful: ${ipAddress}`);
+          // Use the resolved IP
+          testPinecone.config.host = ipAddress;
+        }
+      } catch (ipError) {
+        console.log('⚠️ Manual IP resolution failed:', ipError.message);
+      }
+    }
+    
     // Test basic API call
     const indexName = process.env.PINECONE_INDEX_NAME || 'chatbot';
     const testIndex = testPinecone.index(indexName);
@@ -187,6 +209,34 @@ async function initializePinecone() {
     console.error('❌ PINECONE_API_KEY not found in environment variables');
     pineconeConnected = false;
   }
+}
+
+// Local fallback context function
+function getLocalFallbackContext(message) {
+  const lowerMessage = message.toLowerCase();
+  
+  // Common apologetics topics with local context
+  const fallbackContexts = {
+    'jesus': 'Jesus Christ is the central figure of Christianity, believed to be the Son of God who came to earth to save humanity from sin. The Bible teaches that Jesus is fully God and fully man, who lived a sinless life, died on the cross for our sins, and rose again on the third day.',
+    'quran': 'The Quran is the holy book of Islam, believed by Muslims to be the word of God revealed to the Prophet Muhammad. Christians believe the Bible is the inspired word of God, while the Quran was written later and contains different teachings about Jesus and salvation.',
+    'bible': 'The Bible is the inspired word of God, consisting of 66 books written by various authors over thousands of years. It contains the Old Testament (Hebrew Scriptures) and New Testament (Christian Scriptures), revealing God\'s plan for salvation through Jesus Christ.',
+    'trinity': 'The Trinity is the Christian doctrine that God exists as three persons in one being: Father, Son (Jesus Christ), and Holy Spirit. This is a mystery that cannot be fully understood by human reason but is revealed in Scripture.',
+    'salvation': 'Salvation in Christianity is the deliverance from sin and its consequences through faith in Jesus Christ. The Bible teaches that salvation is a free gift from God, received by grace through faith, not by works.',
+    'prophet': 'In Christianity, Jesus is not just a prophet but the Son of God and Savior of the world. While Islam considers Jesus a prophet, Christians believe He is divine and the only way to salvation.',
+    'commandments': 'The Ten Commandments are moral laws given by God to Moses on Mount Sinai. They include commands to worship only God, honor parents, not murder, not commit adultery, not steal, not lie, and not covet.',
+    'resurrection': 'The resurrection of Jesus Christ is the cornerstone of Christian faith. Jesus died on the cross and rose again on the third day, proving His divinity and conquering death. This event is historically verified and central to Christian belief.',
+    'sin': 'Sin is any thought, word, or action that goes against God\'s perfect standard. The Bible teaches that all humans are sinners and need salvation through Jesus Christ. Jesus died to pay the penalty for our sins.',
+    'heaven': 'Heaven is the eternal dwelling place of God and the final destination for those who accept Jesus Christ as their Savior. The Bible describes it as a place of perfect joy, peace, and fellowship with God.'
+  };
+  
+  // Check if message contains any of these keywords
+  for (const [keyword, context] of Object.entries(fallbackContexts)) {
+    if (lowerMessage.includes(keyword)) {
+      return context;
+    }
+  }
+  
+  return null;
 }
 
 // Initialize Pinecone on startup
@@ -493,6 +543,16 @@ app.post('/api/chat', chatLimiter, validateChat, async (req, res) => {
     } else {
       console.log('ℹ️ Skipping RAG search - Pinecone not configured');
       ragStatus = 'not_configured';
+    }
+    
+    // Add local fallback context for common questions
+    if (!context && ragStatus !== 'success') {
+      const localFallback = getLocalFallbackContext(message);
+      if (localFallback) {
+        context = localFallback;
+        ragStatus = 'local_fallback';
+        console.log('📚 Using local fallback context');
+      }
     }
     
     // Create system prompt
