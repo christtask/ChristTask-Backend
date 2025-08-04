@@ -1,0 +1,5 @@
+[33m00a68eed[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m Switch to index-simple.js with RAG functionality
+[33m49efc63b[m Deploy latest backend with TypeScript conversion and payment fixes
+[33m509b88ae[m 🔒 SECURITY: Add helmet, input validation, rate limiting, and file system security
+[33mc25902b9[m SECURITY: Remove hardcoded Supabase API key from test file
+[33ma72f46c0[m Remove duplicate TypeScript files - keep only JavaScript files
