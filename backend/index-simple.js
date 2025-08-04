@@ -1,4 +1,4 @@
-require('dotenv').config({ path: '../.env' });
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const Stripe = require('stripe');
@@ -9,7 +9,20 @@ const { body, validationResult } = require('express-validator');
 const rateLimit = require('express-rate-limit');
 
 const app = express();
-const stripe = process.env.STRIPE_SECRET_KEY ? Stripe(process.env.STRIPE_SECRET_KEY) : null;
+
+// Initialize Stripe with proper error handling
+let stripe = null;
+if (process.env.STRIPE_SECRET_KEY) {
+  try {
+    stripe = Stripe(process.env.STRIPE_SECRET_KEY);
+    console.log('✅ Stripe initialized successfully');
+  } catch (error) {
+    console.error('❌ Stripe initialization failed:', error.message);
+    stripe = null;
+  }
+} else {
+  console.error('❌ STRIPE_SECRET_KEY not found in environment variables');
+}
 
 // Security headers with helmet
 app.use(helmet());
@@ -40,16 +53,40 @@ const subscriptionLimiter = rateLimit({
   message: 'Too many subscription attempts, please try again later.'
 });
 
-// Initialize OpenAI
-const openai = process.env.OPENAI_API_KEY ? new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-}) : null;
+// Initialize OpenAI with proper error handling
+let openai = null;
+if (process.env.OPENAI_API_KEY) {
+  try {
+    openai = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY,
+    });
+    console.log('✅ OpenAI initialized successfully');
+  } catch (error) {
+    console.error('❌ OpenAI initialization failed:', error.message);
+    openai = null;
+  }
+} else {
+  console.error('❌ OPENAI_API_KEY not found in environment variables');
+}
 
-// Initialize Pinecone
-const pinecone = process.env.PINECONE_API_KEY ? new Pinecone({
-  apiKey: process.env.PINECONE_API_KEY,
-  environment: process.env.PINECONE_ENVIRONMENT || 'gcp-starter',
-}) : null;
+// Initialize Pinecone with proper error handling
+let pinecone = null;
+if (process.env.PINECONE_API_KEY) {
+  try {
+    pinecone = new Pinecone({
+      apiKey: process.env.PINECONE_API_KEY,
+      environment: process.env.PINECONE_ENVIRONMENT || 'us-east-1',
+    });
+    console.log('✅ Pinecone initialized successfully');
+    console.log(`🌲 Environment: ${process.env.PINECONE_ENVIRONMENT || 'us-east-1'}`);
+    console.log(`📚 Index: ${process.env.PINECONE_INDEX_NAME || 'chatbot'}`);
+  } catch (error) {
+    console.error('❌ Pinecone initialization failed:', error.message);
+    pinecone = null;
+  }
+} else {
+  console.error('❌ PINECONE_API_KEY not found in environment variables');
+}
 
 // Configure CORS to allow your frontend domain
 app.use(cors({
@@ -107,6 +144,14 @@ const validateSubscription = [
 
 // Stripe webhook handler - MUST be before express.json() middleware
 app.post('/api/webhook', express.raw({ type: 'application/json' }), async (req, res) => {
+  // Check if Stripe is configured
+  if (!stripe) {
+    console.error('❌ Stripe not configured - cannot process webhook');
+    return res.status(500).json({ 
+      error: 'Payment system not configured' 
+    });
+  }
+  
   const sig = req.headers['stripe-signature'];
   const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
@@ -200,7 +245,19 @@ app.use(express.json());
 
 // OPTIONS handlers for CORS preflight requests
 app.options('/api/chat', (req, res) => {
-  res.header('Access-Control-Allow-Origin', 'https://www.christtask.com');
+  const allowedOrigins = [
+    'https://christ-task-mu.vercel.app',
+    'https://christtask.com',
+    'https://www.christtask.com',
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'http://localhost:4173'
+  ];
+  
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin)) {
+    res.header('Access-Control-Allow-Origin', origin);
+  }
   res.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
   res.header('Access-Control-Allow-Credentials', 'true');
@@ -208,7 +265,19 @@ app.options('/api/chat', (req, res) => {
 });
 
 app.options('/api/test-chat', (req, res) => {
-  res.header('Access-Control-Allow-Origin', 'https://www.christtask.com');
+  const allowedOrigins = [
+    'https://christ-task-mu.vercel.app',
+    'https://christtask.com',
+    'https://www.christtask.com',
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'http://localhost:4173'
+  ];
+  
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin)) {
+    res.header('Access-Control-Allow-Origin', origin);
+  }
   res.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, Accept, Origin');
   res.header('Access-Control-Allow-Credentials', 'true');
@@ -237,11 +306,11 @@ app.post('/api/chat', chatLimiter, validateChat, async (req, res) => {
   try {
     console.log('🤖 Processing chat request:', message);
     
-    // Check if environment variables are set
-    if (!process.env.OPENAI_API_KEY) {
-      console.error('❌ OPENAI_API_KEY not set');
+    // Check if OpenAI is configured
+    if (!openai) {
+      console.error('❌ OpenAI not configured - cannot process chat');
       return res.status(500).json({ 
-        error: 'OpenAI API key not configured' 
+        error: 'AI system not configured. Please contact support.' 
       });
     }
     
@@ -269,11 +338,11 @@ app.post('/api/chat', chatLimiter, validateChat, async (req, res) => {
         const queryResponse = await Promise.race([
           index.query({
             vector: queryEmbedding.data[0].embedding,
-            topK: 2, // Reduced from 3 to 2 for speed
+            topK: 3, // Back to 3 for better results
             includeMetadata: true,
           }),
           new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('Pinecone timeout')), 3000)
+            setTimeout(() => reject(new Error('Pinecone timeout')), 10000)
           )
         ]);
         
@@ -282,8 +351,12 @@ app.post('/api/chat', chatLimiter, validateChat, async (req, res) => {
           console.log(`✅ Found ${queryResponse.matches.length} relevant chunks from Pinecone`);
         }
       } catch (error) {
-        console.error('⚠️ RAG search failed:', error.message);
-        // Continue without context for faster response
+        console.error('❌ RAG search failed:', error.message);
+        console.error('Full error:', error);
+        return res.status(500).json({ 
+          error: 'RAG system failed',
+          details: error.message
+        });
       }
     }
     
@@ -381,10 +454,10 @@ app.post('/api/test-chat', async (req, res) => {
     
     console.log('🧪 Testing chat with message:', message);
     
-    // Check environment variables
+    // Check if services are configured
     const envCheck = {
-      openai: !!process.env.OPENAI_API_KEY,
-      pinecone: !!process.env.PINECONE_API_KEY,
+      openai: !!openai,
+      pinecone: !!pinecone,
       pineconeIndex: process.env.PINECONE_INDEX_NAME || 'chatbot'
     };
     
@@ -393,7 +466,7 @@ app.post('/api/test-chat', async (req, res) => {
     if (!envCheck.openai || !envCheck.pinecone) {
       return res.json({
         status: 'error',
-        message: 'Missing environment variables',
+        message: 'AI or search system not configured',
         envCheck
       });
     }
@@ -477,12 +550,20 @@ Always respond in a helpful, informative, and Christ-like manner.`;
 
 // Create subscription endpoint
 app.post('/create-subscription', async (req, res) => {
+  // Check if Stripe is configured
+  if (!stripe) {
+    console.error('❌ Stripe not configured - cannot process payment');
+    return res.status(500).json({ 
+      error: 'Payment system not configured. Please contact support.' 
+    });
+  }
+  
   const { plan, couponCode, paymentMethodId, email, userId } = req.body;
   
   // Map plan IDs to Stripe price IDs
   const priceMap = {
-    weekly: 'price_1ReOQ7FEfjI8S6GYiTNrAvPb',
-    monthly: 'price_1ReOLjFEfjI8S6GYAe7YSlOt',
+    weekly: process.env.STRIPE_WEEKLY_PRICE_ID || 'price_1ReOQ7FEfjI8S6GYiTNrAvPb',
+    monthly: process.env.STRIPE_MONTHLY_PRICE_ID || 'price_1ReOLjFEfjI8S6GYAe7YSlOt',
   };
   
   const priceId = priceMap[plan];
@@ -539,11 +620,13 @@ app.post('/create-subscription', async (req, res) => {
 
     // Handle promotion code if provided
     if (hasValidCoupon) {
-      // For now, use the specific promotion code ID you provided
-      // In production, you might want to look this up dynamically
-      if (trimmedCouponCode.toUpperCase() === 'SALAMOVIC') {
+      // Check promotion code
+      const validCouponCode = process.env.STRIPE_COUPON_CODE || 'SALAMOVIC';
+      const validPromoId = process.env.STRIPE_PROMOTION_ID || 'promo_1RgTYDFEfjI8S6GYmY5YR8sB';
+      
+      if (trimmedCouponCode.toUpperCase() === validCouponCode.toUpperCase()) {
         subscriptionParams.discounts = [{
-          promotion_code: 'promo_1RgTYDFEfjI8S6GYmY5YR8sB'
+          promotion_code: validPromoId
         }];
       } else {
         return res.status(400).json({ error: 'Invalid promotion code.' });
