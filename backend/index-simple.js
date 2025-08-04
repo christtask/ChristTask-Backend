@@ -69,24 +69,88 @@ if (process.env.OPENAI_API_KEY) {
   console.error('❌ OPENAI_API_KEY not found in environment variables');
 }
 
-// Initialize Pinecone with proper error handling
-let pinecone = null;
-if (process.env.PINECONE_API_KEY) {
+// Pinecone connectivity test function
+async function testPineconeConnectivity() {
+  if (!process.env.PINECONE_API_KEY) {
+    console.log('❌ PINECONE_API_KEY not found - skipping connectivity test');
+    return false;
+  }
+
   try {
-    pinecone = new Pinecone({
+    console.log('🔍 Testing Pinecone connectivity...');
+    
+    // Test DNS resolution first
+    const dns = require('dns').promises;
+    const controllerHost = `controller.${process.env.PINECONE_ENVIRONMENT || 'us-east-1'}.pinecone.io`;
+    
+    try {
+      await dns.lookup(controllerHost);
+      console.log(`✅ DNS resolution successful for ${controllerHost}`);
+    } catch (dnsError) {
+      console.error(`❌ DNS resolution failed for ${controllerHost}:`, dnsError.message);
+      return false;
+    }
+
+    // Test Pinecone client initialization
+    const testPinecone = new Pinecone({
       apiKey: process.env.PINECONE_API_KEY,
       environment: process.env.PINECONE_ENVIRONMENT || 'us-east-1',
     });
-    console.log('✅ Pinecone initialized successfully');
-    console.log(`🌲 Environment: ${process.env.PINECONE_ENVIRONMENT || 'us-east-1'}`);
-    console.log(`📚 Index: ${process.env.PINECONE_INDEX_NAME || 'chatbot'}`);
+    
+    // Test basic API call
+    const indexName = process.env.PINECONE_INDEX_NAME || 'chatbot';
+    const testIndex = testPinecone.index(indexName);
+    
+    // Try a simple describe call to test connectivity
+    await testIndex.describeIndexStats();
+    console.log('✅ Pinecone connectivity test successful');
+    return true;
+    
   } catch (error) {
-    console.error('❌ Pinecone initialization failed:', error.message);
-    pinecone = null;
+    console.error('❌ Pinecone connectivity test failed:', error.message);
+    console.error('Error type:', error.constructor.name);
+    console.error('Error code:', error.code);
+    return false;
   }
-} else {
-  console.error('❌ PINECONE_API_KEY not found in environment variables');
 }
+
+// Initialize Pinecone with connectivity test
+let pinecone = null;
+let pineconeConnected = false;
+
+async function initializePinecone() {
+  if (process.env.PINECONE_API_KEY) {
+    try {
+      pinecone = new Pinecone({
+        apiKey: process.env.PINECONE_API_KEY,
+        environment: process.env.PINECONE_ENVIRONMENT || 'us-east-1',
+      });
+      console.log('✅ Pinecone client initialized successfully');
+      console.log(`🌲 Environment: ${process.env.PINECONE_ENVIRONMENT || 'us-east-1'}`);
+      console.log(`📚 Index: ${process.env.PINECONE_INDEX_NAME || 'chatbot'}`);
+      
+      // Test connectivity
+      pineconeConnected = await testPineconeConnectivity();
+      
+      if (pineconeConnected) {
+        console.log('✅ Pinecone is fully operational');
+      } else {
+        console.log('⚠️ Pinecone client initialized but connectivity test failed');
+      }
+      
+    } catch (error) {
+      console.error('❌ Pinecone initialization failed:', error.message);
+      pinecone = null;
+      pineconeConnected = false;
+    }
+  } else {
+    console.error('❌ PINECONE_API_KEY not found in environment variables');
+    pineconeConnected = false;
+  }
+}
+
+// Initialize Pinecone on startup
+initializePinecone();
 
 // Configure CORS to allow your frontend domain
 app.use(cors({
@@ -316,7 +380,9 @@ app.post('/api/chat', chatLimiter, validateChat, async (req, res) => {
     
     // Generate embedding for user query (with timeout)
     let context = '';
-    if (process.env.PINECONE_API_KEY && pinecone) {
+    let ragStatus = 'not_configured';
+    
+    if (process.env.PINECONE_API_KEY && pinecone && pineconeConnected) {
       try {
         console.log('🔍 Starting RAG search...');
         
@@ -355,17 +421,38 @@ app.post('/api/chat', chatLimiter, validateChat, async (req, res) => {
         if (queryResponse.matches && queryResponse.matches.length > 0) {
           context = queryResponse.matches.map(match => match.metadata?.text || '').join(' ');
           console.log(`✅ Found ${queryResponse.matches.length} relevant chunks from Pinecone`);
+          ragStatus = 'success';
         } else {
           console.log('ℹ️ No relevant matches found in Pinecone');
+          ragStatus = 'no_matches';
         }
       } catch (error) {
         console.error('❌ RAG search failed:', error.message);
+        console.error('Error type:', error.constructor.name);
+        console.error('Error code:', error.code);
         console.error('Full error:', error);
-        // Don't return 500 here, just continue without RAG context
-        console.log('⚠️ Continuing without RAG context due to error');
+        
+        // Categorize the error
+        if (error.message.includes('ENOTFOUND') || error.message.includes('DNS')) {
+          ragStatus = 'dns_error';
+          console.log('⚠️ DNS resolution failed - continuing without RAG context');
+        } else if (error.message.includes('timeout')) {
+          ragStatus = 'timeout_error';
+          console.log('⚠️ Pinecone query timed out - continuing without RAG context');
+        } else if (error.message.includes('network') || error.message.includes('connection')) {
+          ragStatus = 'network_error';
+          console.log('⚠️ Network connectivity issue - continuing without RAG context');
+        } else {
+          ragStatus = 'unknown_error';
+          console.log('⚠️ Unknown Pinecone error - continuing without RAG context');
+        }
       }
+    } else if (process.env.PINECONE_API_KEY && pinecone && !pineconeConnected) {
+      console.log('⚠️ Skipping RAG search - Pinecone connectivity test failed during startup');
+      ragStatus = 'connectivity_failed';
     } else {
       console.log('ℹ️ Skipping RAG search - Pinecone not configured');
+      ragStatus = 'not_configured';
     }
     
     // Create system prompt
@@ -413,6 +500,7 @@ Always respond in a helpful, informative, and Christ-like manner.`;
       difficulty: 'Intermediate',
       timestamp: new Date().toISOString(),
       context: context ? 'Used RAG context' : 'No context available',
+      ragStatus: ragStatus, // Add RAG status for debugging
       response: aiResponse  // Add this for compatibility
     });
     
@@ -455,6 +543,72 @@ app.get('/api/test-rag', async (req, res) => {
       status: 'error',
       message: 'RAG test failed',
       error: error.message
+    });
+  }
+});
+
+// Comprehensive health check endpoint
+app.get('/api/health', async (req, res) => {
+  try {
+    console.log('🏥 Running comprehensive health check...');
+    
+    const health = {
+      timestamp: new Date().toISOString(),
+      server: 'healthy',
+      environment: {
+        node: process.env.NODE_ENV || 'development',
+        region: process.env.PINECONE_ENVIRONMENT || 'us-east-1'
+      },
+      services: {
+        openai: {
+          configured: !!process.env.OPENAI_API_KEY,
+          initialized: !!openai,
+          status: openai ? 'ready' : 'not_configured'
+        },
+        pinecone: {
+          configured: !!process.env.PINECONE_API_KEY,
+          initialized: !!pinecone,
+          connected: pineconeConnected,
+          environment: process.env.PINECONE_ENVIRONMENT || 'us-east-1',
+          index: process.env.PINECONE_INDEX_NAME || 'chatbot',
+          status: pineconeConnected ? 'operational' : (pinecone ? 'connectivity_issue' : 'not_configured')
+        },
+        stripe: {
+          configured: !!process.env.STRIPE_SECRET_KEY,
+          initialized: !!stripe,
+          status: stripe ? 'ready' : 'not_configured'
+        }
+      },
+      connectivity: {
+        dns_resolution: 'unknown',
+        pinecone_reachable: 'unknown'
+      }
+    };
+    
+    // Test DNS resolution if Pinecone is configured
+    if (process.env.PINECONE_API_KEY) {
+      try {
+        const dns = require('dns').promises;
+        const controllerHost = `controller.${process.env.PINECONE_ENVIRONMENT || 'us-east-1'}.pinecone.io`;
+        await dns.lookup(controllerHost);
+        health.connectivity.dns_resolution = 'success';
+        health.connectivity.pinecone_reachable = 'reachable';
+      } catch (dnsError) {
+        health.connectivity.dns_resolution = 'failed';
+        health.connectivity.pinecone_reachable = 'unreachable';
+        health.connectivity.dns_error = dnsError.message;
+      }
+    }
+    
+    res.json(health);
+    
+  } catch (error) {
+    console.error('❌ Health check failed:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Health check failed',
+      error: error.message,
+      timestamp: new Date().toISOString()
     });
   }
 });
