@@ -318,6 +318,8 @@ app.post('/api/chat', chatLimiter, validateChat, async (req, res) => {
     let context = '';
     if (process.env.PINECONE_API_KEY && pinecone) {
       try {
+        console.log('🔍 Starting RAG search...');
+        
         // Add timeout to prevent hanging
         const embeddingPromise = openai.embeddings.create({
           model: 'text-embedding-3-small',
@@ -332,8 +334,12 @@ app.post('/api/chat', chatLimiter, validateChat, async (req, res) => {
           )
         ]);
         
+        console.log('✅ Embedding generated successfully');
+        
         const indexName = process.env.PINECONE_INDEX_NAME || 'chatbot';
         const index = pinecone.index(indexName);
+        
+        console.log(`🔍 Querying Pinecone index: ${indexName}`);
         
         const queryResponse = await Promise.race([
           index.query({
@@ -349,15 +355,17 @@ app.post('/api/chat', chatLimiter, validateChat, async (req, res) => {
         if (queryResponse.matches && queryResponse.matches.length > 0) {
           context = queryResponse.matches.map(match => match.metadata?.text || '').join(' ');
           console.log(`✅ Found ${queryResponse.matches.length} relevant chunks from Pinecone`);
+        } else {
+          console.log('ℹ️ No relevant matches found in Pinecone');
         }
       } catch (error) {
         console.error('❌ RAG search failed:', error.message);
         console.error('Full error:', error);
-        return res.status(500).json({ 
-          error: 'RAG system failed',
-          details: error.message
-        });
+        // Don't return 500 here, just continue without RAG context
+        console.log('⚠️ Continuing without RAG context due to error');
       }
+    } else {
+      console.log('ℹ️ Skipping RAG search - Pinecone not configured');
     }
     
     // Create system prompt
@@ -377,6 +385,7 @@ When answering questions:
 Always respond in a helpful, informative, and Christ-like manner.`;
 
     // Generate response using OpenAI (optimized)
+    console.log('🤖 Generating AI response...');
     const completion = await Promise.race([
       openai.chat.completions.create({
         model: 'gpt-3.5-turbo',
@@ -409,9 +418,16 @@ Always respond in a helpful, informative, and Christ-like manner.`;
     
   } catch (error) {
     console.error('❌ Chat error:', error);
+    
+    // Try to provide a helpful fallback response
+    const fallbackResponse = `I apologize, but I'm experiencing technical difficulties right now. Please try again in a moment. If the problem persists, please contact support.
+
+Error details: ${error.message}`;
+    
     res.status(500).json({ 
       error: 'An error occurred while processing your message.',
-      details: error.message 
+      details: error.message,
+      fallback: fallbackResponse
     });
   }
 });
