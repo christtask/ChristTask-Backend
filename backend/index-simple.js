@@ -81,10 +81,20 @@ let pineconeConnected = false;
 async function initializePinecone() {
   if (process.env.PINECONE_API_KEY) {
     try {
-      pinecone = new Pinecone({
-        apiKey: process.env.PINECONE_API_KEY,
-        environment: 'us-east-1', // Force us-east-1 environment
-      });
+      // Try to create Pinecone client with error handling
+      try {
+        pinecone = new Pinecone({
+          apiKey: process.env.PINECONE_API_KEY,
+          environment: process.env.PINECONE_ENVIRONMENT || 'gcp-starter',
+        });
+      } catch (initError) {
+        console.log('⚠️ Pinecone initialization failed, trying alternative approach...');
+        // Try with a different environment if the first one fails
+        pinecone = new Pinecone({
+          apiKey: process.env.PINECONE_API_KEY,
+          environment: 'gcp-starter',
+        });
+      }
       console.log('✅ Pinecone client initialized successfully');
       console.log(`🌲 Environment: ${process.env.PINECONE_ENVIRONMENT || 'us-east-1'} (using fallback: us-east-1)`);
       console.log(`📚 Index: ${process.env.PINECONE_INDEX_NAME || 'chatbot'}`);
@@ -365,7 +375,7 @@ app.post('/api/chat', chatLimiter, validateChat, async (req, res) => {
     let context = '';
     let ragStatus = 'not_configured';
     
-         if (false) { // Temporarily disable Pinecone RAG
+         if (process.env.PINECONE_API_KEY && pinecone && pineconeConnected) {
       try {
         console.log('🔍 Starting RAG search...');
         
