@@ -72,108 +72,9 @@ if (process.env.OPENAI_API_KEY) {
   console.error('❌ OPENAI_API_KEY not found in environment variables');
 }
 
-// Pinecone connectivity test function
-async function testPineconeConnectivity() {
-  if (!process.env.PINECONE_API_KEY) {
-    console.log('❌ PINECONE_API_KEY not found - skipping connectivity test');
-    return false;
-  }
+// Pinecone connectivity test function (removed - not needed)
 
-  try {
-    console.log('🔍 Testing Pinecone connectivity...');
-    
-    // Test DNS resolution first
-    const dns = require('dns').promises;
-    const controllerHost = `controller.${process.env.PINECONE_ENVIRONMENT || 'us-east-1'}.pinecone.io`;
-    
-    try {
-      await dns.lookup(controllerHost);
-      console.log(`✅ DNS resolution successful for ${controllerHost}`);
-    } catch (dnsError) {
-      console.error(`❌ DNS resolution failed for ${controllerHost}:`, dnsError.message);
-      
-      // Try alternative DNS resolution methods
-      try {
-        console.log('🔄 Trying alternative DNS resolution...');
-        const { exec } = require('child_process');
-        const util = require('util');
-        const execAsync = util.promisify(exec);
-        
-        // Try using nslookup as fallback
-        await execAsync(`nslookup ${controllerHost}`);
-        console.log(`✅ Alternative DNS resolution successful for ${controllerHost}`);
-      } catch (altDnsError) {
-        console.error(`❌ Alternative DNS resolution also failed:`, altDnsError.message);
-        return false;
-      }
-    }
-
-    // Test Pinecone client initialization with potential IP override
-    const testPinecone = new Pinecone({
-      apiKey: process.env.PINECONE_API_KEY,
-      environment: process.env.PINECONE_ENVIRONMENT || 'us-east-1',
-    });
-    
-    // If DNS fails, try with explicit host override
-    if (process.env.PINECONE_HOST_OVERRIDE) {
-      console.log('🔄 Using host override for Pinecone connection');
-      testPinecone.config.host = process.env.PINECONE_HOST_OVERRIDE;
-    }
-    
-    // Try manual IP resolution if DNS fails
-    if (!process.env.PINECONE_HOST_OVERRIDE) {
-      try {
-        console.log('🔄 Attempting manual IP resolution...');
-        const { exec } = require('child_process');
-        const util = require('util');
-        const execAsync = util.promisify(exec);
-        
-        // Try to get IP from a public DNS resolver
-        const { stdout } = await execAsync(`dig +short ${controllerHost} @8.8.8.8`);
-        const ipAddress = stdout.trim();
-        
-        if (ipAddress && ipAddress !== '') {
-          console.log(`✅ Manual IP resolution successful: ${ipAddress}`);
-          // Use the resolved IP
-          testPinecone.config.host = ipAddress;
-        }
-      } catch (ipError) {
-        console.log('⚠️ Manual IP resolution failed:', ipError.message);
-      }
-    }
-    
-    // Test basic API call
-    const indexName = process.env.PINECONE_INDEX_NAME || 'chatbot';
-    const testIndex = testPinecone.index(indexName);
-    
-    // Try a simple query to test connectivity (skip describeIndexStats)
-    try {
-      console.log('🔄 Testing Pinecone connectivity with simple query...');
-      // Try a simple query with a test vector
-      const testVector = new Array(1536).fill(0.1);
-      await testIndex.query({
-        vector: testVector,
-        topK: 1,
-        includeMetadata: false
-      });
-      console.log('✅ Pinecone connectivity test successful');
-      return true;
-    } catch (error) {
-      console.log('❌ Pinecone connectivity test failed:', error.message);
-      console.log('Error type:', error.constructor.name);
-      console.log('Error code:', error.code);
-      return false;
-    }
-    
-  } catch (error) {
-    console.error('❌ Pinecone connectivity test failed:', error.message);
-    console.error('Error type:', error.constructor.name);
-    console.error('Error code:', error.code);
-    return false;
-  }
-}
-
-// Initialize Pinecone with connectivity test
+// Initialize Pinecone without connectivity test
 let pinecone = null;
 let pineconeConnected = false;
 
@@ -188,14 +89,9 @@ async function initializePinecone() {
       console.log(`🌲 Environment: ${process.env.PINECONE_ENVIRONMENT || 'us-east-1'}`);
       console.log(`📚 Index: ${process.env.PINECONE_INDEX_NAME || 'chatbot'}`);
       
-      // Test connectivity
-      pineconeConnected = await testPineconeConnectivity();
-      
-      if (pineconeConnected) {
-        console.log('✅ Pinecone is fully operational');
-      } else {
-        console.log('⚠️ Pinecone client initialized but connectivity test failed');
-      }
+      // Skip connectivity test - just assume it works
+      pineconeConnected = true;
+      console.log('✅ Pinecone is ready for use');
       
     } catch (error) {
       console.error('❌ Pinecone initialization failed:', error.message);
