@@ -1,11 +1,40 @@
-const { generateChatCompletion, getSystemPrompt } = require('./openai');
+import { generateChatCompletion, getSystemPrompt } from './openai';
+
+// Types
+interface ScriptureReferences {
+  bible: string[];
+  quran: string[];
+}
+
+interface ChatMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}
+
+interface RAGOptions {
+  temperature?: number;
+  maxTokens?: number;
+}
+
+interface RAGResponse {
+  answer: string;
+  sources: Array<{
+    text: string;
+    metadata: {
+      source: string;
+    };
+  }>;
+  scriptureReferences: ScriptureReferences;
+  topic: string;
+  difficulty: string;
+}
 
 /**
  * Extract scripture references from text
  */
-function extractScriptureReferences(text) {
-  const bibleRefs = [];
-  const quranRefs = [];
+function extractScriptureReferences(text: string): ScriptureReferences {
+  const bibleRefs: string[] = [];
+  const quranRefs: string[] = [];
 
   // Simple regex patterns for scripture references
   const biblePattern = /(?:John|Matthew|Mark|Luke|Acts|Romans|Corinthians|Galatians|Ephesians|Philippians|Colossians|Thessalonians|Timothy|Titus|Philemon|Hebrews|James|Peter|John|Jude|Revelation)\s+\d+:\d+/gi;
@@ -26,11 +55,11 @@ function extractScriptureReferences(text) {
 /**
  * Simple RAG response without Pinecone
  */
-async function generateRAGResponse(
-  userQuery,
-  chatHistory = [],
-  options = {}
-) {
+export async function generateRAGResponse(
+  userQuery: string,
+  chatHistory: ChatMessage[] = [],
+  options: RAGOptions = {}
+): Promise<RAGResponse> {
   try {
     console.log('🔄 Using fallback RAG response for:', userQuery);
     
@@ -58,14 +87,14 @@ async function generateRAGResponse(
     };
   } catch (error) {
     console.error('Error in fallback RAG response generation:', error);
-    throw new Error('Failed to generate RAG response: ' + error.message);
+    throw new Error('Failed to generate RAG response: ' + (error as Error).message);
   }
 }
 
 /**
  * Build context from local content
  */
-function buildContextFromLocalContent(userQuery) {
+function buildContextFromLocalContent(userQuery: string): string {
   // Simple context based on the query
   const queryLower = userQuery.toLowerCase();
   
@@ -93,10 +122,10 @@ function buildContextFromLocalContent(userQuery) {
 /**
  * Build chat messages for OpenAI API
  */
-function buildChatMessages(userQuery, context, chatHistory) {
+function buildChatMessages(userQuery: string, context: string, chatHistory: ChatMessage[]): ChatMessage[] {
   const systemPrompt = getSystemPrompt();
   
-  const messages = [
+  const messages: ChatMessage[] = [
     {
       role: 'system',
       content: `${systemPrompt}\n\n${context}`
@@ -114,8 +143,4 @@ function buildChatMessages(userQuery, context, chatHistory) {
   });
 
   return messages;
-}
-
-module.exports = {
-  generateRAGResponse
-}; 
+} 

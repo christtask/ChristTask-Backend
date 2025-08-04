@@ -1,6 +1,17 @@
-const OpenAI = require('openai');
-const fs = require('fs');
-const path = require('path');
+import OpenAI from 'openai';
+import * as fs from 'fs';
+import * as path from 'path';
+
+// Types
+interface ChatMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}
+
+interface ApologistProfile {
+  system_prompt: string;
+  [key: string]: any;
+}
 
 // Validate OpenAI API key
 const apiKey = process.env.OPENAI_API_KEY?.trim();
@@ -16,11 +27,8 @@ const openai = new OpenAI({
 /**
  * Load apologist profile from JSON file
  */
-function loadApologistProfile() {
+export function loadApologistProfile(): ApologistProfile {
   try {
-    const fs = require('fs');
-    const path = require('path');
-    
     const profilePath = path.join(__dirname, '../config/apologist-profile.json');
     
     // Validate path to prevent directory traversal attacks
@@ -49,7 +57,7 @@ function loadApologistProfile() {
 /**
  * Generate embedding for text using OpenAI
  */
-async function generateEmbedding(text) {
+export async function generateEmbedding(text: string): Promise<number[]> {
   try {
     const response = await openai.embeddings.create({
       model: 'text-embedding-3-small',
@@ -60,14 +68,18 @@ async function generateEmbedding(text) {
     return response.data[0].embedding;
   } catch (error) {
     console.error('Error generating embedding:', error);
-    throw new Error('Failed to generate embedding: ' + error.message);
+    throw new Error('Failed to generate embedding: ' + (error as Error).message);
   }
 }
 
 /**
  * Generate chat completion using OpenAI
  */
-async function generateChatCompletion(messages, temperature = 0.7, maxTokens = 2000) {
+export async function generateChatCompletion(
+  messages: ChatMessage[], 
+  temperature: number = 0.7, 
+  maxTokens: number = 2000
+): Promise<string> {
   try {
     const response = await openai.chat.completions.create({
       model: 'gpt-3.5-turbo',
@@ -76,24 +88,17 @@ async function generateChatCompletion(messages, temperature = 0.7, maxTokens = 2
       max_tokens: maxTokens,
     });
     
-    return response.choices[0].message.content;
+    return response.choices[0].message.content || '';
   } catch (error) {
     console.error('Error generating chat completion:', error);
-    throw new Error('Failed to generate chat completion: ' + error.message);
+    throw new Error('Failed to generate chat completion: ' + (error as Error).message);
   }
 }
 
 /**
  * Get system prompt for Christian apologetics
  */
-function getSystemPrompt() {
+export function getSystemPrompt(): string {
   const profile = loadApologistProfile();
   return profile.system_prompt;
-}
-
-module.exports = {
-  generateEmbedding,
-  generateChatCompletion,
-  getSystemPrompt,
-  loadApologistProfile
-}; 
+} 

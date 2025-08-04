@@ -1,7 +1,35 @@
-const { Pinecone } = require('@pinecone-database/pinecone');
+import { Pinecone } from '@pinecone-database/pinecone';
+
+// Types
+interface PineconeConfig {
+  apiKey: string;
+  environment: string;
+  indexName: string;
+}
+
+interface SearchResult {
+  id: string;
+  score?: number;
+  text: string;
+  metadata: {
+    source: string;
+    scriptureReferences?: {
+      bible: string[];
+      quran: string[];
+      torah?: string[];
+    };
+    [key: string]: any;
+  };
+}
+
+interface DocumentStats {
+  totalChunks: number;
+  dimension: number;
+  indexFullness: number;
+}
 
 // Validate Pinecone environment variables
-const validatePineconeConfig = () => {
+const validatePineconeConfig = (): PineconeConfig => {
   const apiKey = process.env.PINECONE_API_KEY?.trim();
   const environment = process.env.PINECONE_ENVIRONMENT?.trim();
   const indexName = process.env.PINECONE_INDEX_NAME?.trim();
@@ -22,8 +50,8 @@ const validatePineconeConfig = () => {
 };
 
 // Initialize Pinecone client with validation
-let pinecone;
-let index;
+let pinecone: Pinecone | null = null;
+let index: any = null;
 
 try {
   const config = validatePineconeConfig();
@@ -34,7 +62,7 @@ try {
   index = pinecone.index(config.indexName);
   console.log('✅ Pinecone initialized successfully');
 } catch (error) {
-  console.error('❌ Pinecone initialization failed:', error.message);
+  console.error('❌ Pinecone initialization failed:', (error as Error).message);
   pinecone = null;
   index = null;
 }
@@ -42,7 +70,11 @@ try {
 /**
  * Search for similar document chunks in Pinecone
  */
-async function searchSimilarChunks(queryEmbedding, topK = 5, filter = {}) {
+export async function searchSimilarChunks(
+  queryEmbedding: number[], 
+  topK: number = 5, 
+  filter: Record<string, any> = {}
+): Promise<SearchResult[]> {
   try {
     if (!pinecone || !index) {
       console.log('⚠️ Pinecone not initialized, skipping search');
@@ -67,26 +99,27 @@ async function searchSimilarChunks(queryEmbedding, topK = 5, filter = {}) {
       text: String(match.metadata?.text || ''),
       metadata: {
         ...match.metadata,
+        source: match.metadata?.source || 'unknown',
         scriptureReferences: match.metadata?.scriptureReferences
           ? JSON.parse(String(match.metadata.scriptureReferences))
-          : { bible: [], quran: [] },
+          : { bible: [], quran: [], torah: [] },
       }
     }));
   } catch (error) {
     console.error('Error searching Pinecone:', error);
     console.error('Pinecone error details:', {
-      message: error.message,
-      code: error.code,
-      status: error.status
+      message: (error as Error).message,
+      code: (error as any).code,
+      status: (error as any).status
     });
-    throw new Error('Failed to search Pinecone: ' + error.message);
+    throw new Error('Failed to search Pinecone: ' + (error as Error).message);
   }
 }
 
 /**
  * Get document statistics from Pinecone
  */
-async function getDocumentStats() {
+export async function getDocumentStats(): Promise<DocumentStats> {
   try {
     if (!pinecone || !index) {
       console.log('⚠️ Pinecone not initialized, cannot get stats');
@@ -106,11 +139,6 @@ async function getDocumentStats() {
     };
   } catch (error) {
     console.error('Error getting Pinecone stats:', error);
-    throw new Error('Failed to get Pinecone stats: ' + error.message);
+    throw new Error('Failed to get Pinecone stats: ' + (error as Error).message);
   }
-}
-
-module.exports = {
-  searchSimilarChunks,
-  getDocumentStats
-}; 
+} 

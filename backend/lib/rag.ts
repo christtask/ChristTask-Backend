@@ -1,13 +1,56 @@
-const { generateEmbedding, generateChatCompletion, getSystemPrompt } = require('./openai');
-const { searchSimilarChunks } = require('./pinecone');
+import { generateEmbedding, generateChatCompletion } from './openai';
+import { searchSimilarChunks } from './pinecone';
+import * as fs from 'fs';
+import * as path from 'path';
+
+// Types
+interface ScriptureReferences {
+  bible: string[];
+  quran: string[];
+  torah: string[];
+}
+
+interface SearchResult {
+  text: string;
+  metadata: {
+    source: string;
+    [key: string]: any;
+  };
+  score?: number;
+}
+
+interface ChatMessage {
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+}
+
+interface RAGOptions {
+  topK?: number;
+  filter?: any;
+  temperature?: number;
+  maxTokens?: number;
+}
+
+interface RAGResponse {
+  answer: string;
+  sources: SearchResult[];
+  scriptureReferences: ScriptureReferences;
+  topic: string;
+  difficulty: string;
+}
+
+interface ApologistProfile {
+  system_prompt: string;
+  [key: string]: any;
+}
 
 /**
  * Extract scripture references from text
  */
-function extractScriptureReferences(text) {
-  const bibleRefs = [];
-  const quranRefs = [];
-  const torahRefs = [];
+function extractScriptureReferences(text: string): ScriptureReferences {
+  const bibleRefs: string[] = [];
+  const quranRefs: string[] = [];
+  const torahRefs: string[] = [];
 
   // Enhanced regex patterns for scripture references
   const biblePattern = /(?:John|Matthew|Mark|Luke|Acts|Romans|Corinthians|Galatians|Ephesians|Philippians|Colossians|Thessalonians|Timothy|Titus|Philemon|Hebrews|James|Peter|John|Jude|Revelation|Genesis|Exodus|Leviticus|Numbers|Deuteronomy|Joshua|Judges|Ruth|Samuel|Kings|Chronicles|Ezra|Nehemiah|Esther|Job|Psalms|Proverbs|Ecclesiastes|Song of Solomon|Isaiah|Jeremiah|Lamentations|Ezekiel|Daniel|Hosea|Joel|Amos|Obadiah|Jonah|Micah|Nahum|Habakkuk|Zephaniah|Haggai|Zechariah|Malachi)\s+\d+:\d+/gi;
@@ -32,11 +75,11 @@ function extractScriptureReferences(text) {
 /**
  * Main RAG function that searches for relevant content and generates a response
  */
-async function generateRAGResponse(
-  userQuery,
-  chatHistory = [],
-  options = {}
-) {
+export async function generateRAGResponse(
+  userQuery: string,
+  chatHistory: ChatMessage[] = [],
+  options: RAGOptions = {}
+): Promise<RAGResponse> {
   try {
     console.log('🔍 Generating RAG response for:', userQuery);
     
@@ -83,14 +126,14 @@ async function generateRAGResponse(
     };
   } catch (error) {
     console.error('❌ Error in RAG response generation:', error);
-    throw new Error('Failed to generate RAG response: ' + error.message);
+    throw new Error('Failed to generate RAG response: ' + (error as Error).message);
   }
 }
 
 /**
  * Build context string from search results
  */
-function buildContextFromResults(results, userQuery) {
+function buildContextFromResults(results: SearchResult[], userQuery: string): string {
   const contextParts = [
     `User Question: ${userQuery}`,
     '',
@@ -111,11 +154,7 @@ function buildContextFromResults(results, userQuery) {
 /**
  * Build chat messages for OpenAI API
  */
-function buildChatMessages(userQuery, context, chatHistory) {
-  // Load the full apologist profile with proper path validation
-  const fs = require('fs');
-  const path = require('path');
-  
+function buildChatMessages(userQuery: string, context: string, chatHistory: ChatMessage[]): ChatMessage[] {
   try {
     const profilePath = path.join(__dirname, '..', 'config', 'apologist-profile.json');
     
@@ -131,9 +170,9 @@ function buildChatMessages(userQuery, context, chatHistory) {
       throw new Error('Profile file not found');
     }
     
-    const profile = JSON.parse(fs.readFileSync(resolvedPath, 'utf8'));
+    const profile: ApologistProfile = JSON.parse(fs.readFileSync(resolvedPath, 'utf8'));
     
-    const messages = [
+    const messages: ChatMessage[] = [
       {
         role: 'system',
         content: `${profile.system_prompt}\n\n${context}`
@@ -154,7 +193,7 @@ function buildChatMessages(userQuery, context, chatHistory) {
   } catch (error) {
     console.error('Error loading apologist profile:', error);
     // Return default messages if profile cannot be loaded
-    const messages = [
+    const messages: ChatMessage[] = [
       {
         role: 'system',
         content: `You are a Christian apologetics AI assistant. Your role is to help defend the Christian faith with biblical wisdom, historical evidence, and logical reasoning.\n\n${context}`
@@ -178,7 +217,7 @@ function buildChatMessages(userQuery, context, chatHistory) {
 /**
  * Determine topic from search results
  */
-function determineTopic(results) {
+function determineTopic(results: SearchResult[]): string {
   if (!results || results.length === 0) {
     return 'General Apologetics';
   }
@@ -231,7 +270,7 @@ function determineTopic(results) {
 /**
  * Determine difficulty level from search results
  */
-function determineDifficulty(results) {
+function determineDifficulty(results: SearchResult[]): string {
   if (!results || results.length === 0) {
     return 'Intermediate';
   }
@@ -249,11 +288,7 @@ function determineDifficulty(results) {
     return 'Advanced';
   } else if (wordCount > 500) {
     return 'Intermediate';
-      } else {
+  } else {
     return 'Beginner';
   }
-}
-
-module.exports = {
-  generateRAGResponse
-}; 
+} 

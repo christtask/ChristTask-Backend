@@ -1,0 +1,32 @@
+[33m57575116[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m Restore working RAG chatbot with Pinecone - rollback to index-simple.js
+[33m02804c73[m Fix CORS preflight handler to properly allow apikey header
+[33m1321e5db[m Temporarily remove authentication from chat endpoint to restore RAG functionality
+[33m34d9f4e3[m Remove conflicting cors-proxy.js file that was causing CORS issues
+[33m656efddf[m Add Vercel domain to CORS allowed origins
+[33m01179475[m Fix CORS: Add apikey header to allowed headers
+[33m544940e4[m Add debug component and fix authentication issues
+[33md8a202eb[m Add test files and ensure backend authentication is working
+[33m3504ad2b[m Remove subscription requirement from index-simple.js as well
+[33m9aca4c43[m Temporarily remove subscription requirement for testing chatbot
+[33mb8881855[m Fix RAG implementation - ensure chatbot uses Pinecone knowledge base instead of static responses
+[33mbf54f32a[m Enable RAG system with Pinecone and OpenAI - replace static responses
+[33mc1129913[m Force new deployment - trigger Render rebuild
+[33mf322caf3[m Add frontend integration files and CORS fixes
+[33mff95032b[m Fix CORS configuration: add explicit OPTIONS support and remove conflicting manual headers
+[33m24be48c3[m Update CORS to allow multiple origins
+[33m7057ea09[m Clean CORS fix - revert to simple configuration
+[33m55ef831d[m Add CORS headers to render.yaml configuration
+[33mfc33e08e[m Explicit OPTIONS handler with Cloudflare-compatible headers
+[33m9d4af45d[m Add force CORS headers after middleware
+[33m49e43431[m Fix CORS origin handling for Cloudflare compatibility
+[33m5166826e[m Comprehensive CORS fix with explicit headers and OPTIONS handler
+[33m01298635[m Temporarily disable helmet for CORS testing
+[33me6d3ecc2[m Ultimate CORS fix with explicit headers on all routes
+[33m8fdf6269[m Fix CORS headers after helmet middleware
+[33m3db0c86e[m Simplified CORS fix - direct header setting
+[33m684eaa66[m Ultimate CORS fix - force headers on all responses and immediate OPTIONS handling
+[33m33eb1b94[m Add CORS headers to error and 404 responses
+[33m4c9697e6[m Update CORS configuration with proper middleware order and global OPTIONS handler
+[33mc3fb5406[m Implement proper CORS configuration using cors middleware correctly
+[33m973ef2d0[m Force CORS headers on all responses with explicit origin handling
+[33mfe43a4bf[m Implement secure CORS configuration with specific origins
