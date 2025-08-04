@@ -85,14 +85,14 @@ async function initializePinecone() {
       try {
         pinecone = new Pinecone({
           apiKey: process.env.PINECONE_API_KEY,
-          environment: process.env.PINECONE_ENVIRONMENT || 'gcp-starter',
+          environment: 'aped-4627-b74a', // Use the correct environment from your dashboard
         });
       } catch (initError) {
         console.log('⚠️ Pinecone initialization failed, trying alternative approach...');
         // Try with a different environment if the first one fails
         pinecone = new Pinecone({
           apiKey: process.env.PINECONE_API_KEY,
-          environment: 'gcp-starter',
+          environment: 'aped-4627-b74a',
         });
       }
       console.log('✅ Pinecone client initialized successfully');
@@ -557,7 +557,7 @@ app.get('/api/health', async (req, res) => {
       server: 'healthy',
       environment: {
         node: process.env.NODE_ENV || 'development',
-                 region: 'us-east-1'
+                 region: 'aped-4627-b74a'
       },
       services: {
         openai: {
@@ -569,7 +569,7 @@ app.get('/api/health', async (req, res) => {
           configured: !!process.env.PINECONE_API_KEY,
           initialized: !!pinecone,
           connected: pineconeConnected,
-                     environment: 'us-east-1',
+                     environment: 'aped-4627-b74a',
           index: process.env.PINECONE_INDEX_NAME || 'chatbot',
           status: pineconeConnected ? 'operational' : (pinecone ? 'connectivity_issue' : 'not_configured')
         },
@@ -589,7 +589,7 @@ app.get('/api/health', async (req, res) => {
     if (process.env.PINECONE_API_KEY) {
       try {
         const dns = require('dns').promises;
-                 const controllerHost = `controller.us-east-1.pinecone.io`;
+                 const controllerHost = `controller.aped-4627-b74a.pinecone.io`;
         await dns.lookup(controllerHost);
         health.connectivity.dns_resolution = 'success';
         health.connectivity.pinecone_reachable = 'reachable';
