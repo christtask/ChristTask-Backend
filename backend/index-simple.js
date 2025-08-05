@@ -34,6 +34,7 @@ app.use(helmet.contentSecurityPolicy({
     defaultSrc: ["'self'"],
     styleSrc: ["'self'", "'unsafe-inline'"],
     scriptSrc: ["'self'"],
+    connectSrc: ["'self'", "https://*.pinecone.io", "https://api.openai.com", "https://api.stripe.com"],
   },
 }));
 
@@ -549,7 +550,8 @@ app.get('/api/health', async (req, res) => {
       server: 'healthy',
       environment: {
         node: process.env.NODE_ENV || 'development',
-        region: 'us-east-1'
+        region: process.env.PINECONE_ENVIRONMENT || 'us-east-1'
+
       },
       services: {
         openai: {
